@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: scrabble
+          POSTGRES_PASSWORD: scrabble
+          POSTGRES_DB: scrabble_helper
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scrabble"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install frontend
+        working-directory: frontend
+        run: npm install
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Install backend
+        working-directory: backend
+        run: pip install -r requirements-dev.txt
+      - name: Test
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://scrabble:scrabble@localhost:5432/scrabble_helper
+          DEV_AUTH_BYPASS: "true"
+          SESSION_SECRET: test-secret
+        run: pytest --cov=app --cov-report=term-missing --ignore=tests/test_local_auth.py --ignore=tests/test_gameplay_qa.py
+      - name: Test local auth and gameplay QA
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://scrabble:scrabble@localhost:5432/scrabble_helper
+          DEV_AUTH_BYPASS: "false"
+          LOCAL_AUTH_ENABLED: "true"
+          SESSION_SECRET: test-secret
+          ADMIN_EMAIL: admin@test.local
+          ADMIN_PASSWORD: AdminPass123
+          EMAIL_VERIFICATION_DEV_EXPOSE_CODE: "true"
+        run: pytest tests/test_local_auth.py tests/test_gameplay_qa.py -v
