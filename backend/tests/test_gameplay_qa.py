@@ -36,25 +36,6 @@ def test_full_game_flow_points_mode(auth_client):
 
 
 @pytest.mark.integration
-def test_words_mode_game(auth_client):
-    game_id = setup_and_begin_game(
-        auth_client,
-        ["W1", "W2"],
-        settings={
-            "minutes_per_turn": 3,
-            "input_mode": "words",
-            "show_live_leaderboard": True,
-        },
-    )
-    res = auth_client.post(
-        f"/api/games/{game_id}/turns",
-        json={"word": "quiz", "play_type": "score"},
-    )
-    assert res.status_code == 200
-    assert res.json()["standings"][0]["total_score"] == 22
-
-
-@pytest.mark.integration
 def test_challenge_and_skip(auth_client):
     game_id = setup_and_begin_game(auth_client, ["C1", "C2"])
     ch = auth_client.post(f"/api/games/{game_id}/turns", json={"play_type": "challenge"})

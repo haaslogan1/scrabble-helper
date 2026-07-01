@@ -1,6 +1,6 @@
 import pytest
 
-from app.scoring import assign_placements, PlayerScore, score_from_word
+from app.scoring import assign_placements, PlayerScore
 
 
 @pytest.mark.unit
@@ -14,11 +14,6 @@ def test_assign_placements_tie():
     assert players[0].placement == 1
     assert players[1].placement == 1
     assert players[2].placement == 3
-
-
-@pytest.mark.unit
-def test_score_from_word():
-    assert score_from_word("quiz") == 22
 
 
 @pytest.mark.integration

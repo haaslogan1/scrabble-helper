@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round
-from app.scoring import PlayerScore, assign_placements, score_from_word, validate_turn_points
+from app.scoring import PlayerScore, assign_placements, validate_turn_points
 
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -176,19 +176,13 @@ def record_turn(
 
     ordered = _ordered_players(game)
     current_gp = ordered[game.current_turn_index]
-    input_mode = game.settings.get("input_mode", "points")
     ptype = PlayType(play_type)
 
     if ptype == PlayType.score:
-        if input_mode == "words":
-            if not word:
-                raise HTTPException(status_code=400, detail="Word required in word mode")
-            score = score_from_word(word)
-        else:
-            try:
-                score = float(validate_turn_points(points))
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            score = float(validate_turn_points(points))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
         score = 0.0
         word = word or play_type
