@@ -2,7 +2,7 @@ export type User = { id: number; email: string; name: string; is_admin?: boolean
 export type Player = { id: number; name: string };
 export type GameSettings = {
   minutes_per_turn: number;
-  input_mode: string;
+  input_mode?: string;
   show_live_leaderboard: boolean;
 };
 export type Standing = {
@@ -123,7 +123,8 @@ export const logout = () => api<{ status: string }>("/auth/logout", { method: "P
 export const getHome = () => api<{ completed_games: number; in_progress_games: number; saved_players: number }>("/api/home");
 export const listPlayers = () => api<Player[]>("/api/players");
 export const createPlayer = (name: string) => api<Player>("/api/players", { method: "POST", body: JSON.stringify({ name }) });
-export const createGame = (settings: GameSettings) => api<{ id: number }>("/api/games", { method: "POST", body: JSON.stringify({ settings }) });
+export const createGame = (settings: Partial<GameSettings> & Pick<GameSettings, "minutes_per_turn" | "show_live_leaderboard">) =>
+  api<{ id: number }>("/api/games", { method: "POST", body: JSON.stringify({ settings }) });
 export const setPlayers = (gameId: number, player_ids: number[]) => api<GameState>(`/api/games/${gameId}/players`, { method: "PUT", body: JSON.stringify({ player_ids }) });
 export const setTurnOrder = (gameId: number, player_ids: number[]) => api<GameState>(`/api/games/${gameId}/turn-order`, { method: "POST", body: JSON.stringify({ player_ids }) });
 export const randomFirst = (gameId: number) => api<GameState>(`/api/games/${gameId}/random-first`, { method: "POST" });

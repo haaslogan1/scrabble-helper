@@ -9,7 +9,6 @@ export default function GamePlayPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<GameState | null>(null);
   const [points, setPoints] = useState("");
-  const [word, setWord] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,7 +28,7 @@ export default function GamePlayPage() {
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
   }, [state?.current_player, state?.current_round]);
 
-  if (!state) return <p>Loading...</p>;
+  if (!state) return <p className="loading-state">Loading...</p>;
   if (state.status === "ending") {
     navigate(`/game/${gameId}/end`);
     return null;
@@ -39,7 +38,6 @@ export default function GamePlayPage() {
     return null;
   }
 
-  const wordMode = state.settings.input_mode === "words";
   const limit = (state.settings.minutes_per_turn || 3) * 60;
 
   async function submitTurn(playType: string) {
@@ -47,7 +45,7 @@ export default function GamePlayPage() {
     setError(null);
 
     let validatedPoints: number | undefined;
-    if (playType === "score" && !wordMode) {
+    if (playType === "score") {
       const check = validateTurnPointsInput(points);
       if (!check.ok) {
         setError(check.message);
@@ -62,14 +60,12 @@ export default function GamePlayPage() {
       timer_elapsed_sec: elapsed,
     };
     if (playType === "score") {
-      if (wordMode) body.word = word;
-      else body.points = validatedPoints;
+      body.points = validatedPoints;
     }
     try {
       const next = await recordTurn(gameId, body);
       setState(next);
       setPoints("");
-      setWord("");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to submit turn";
       setError(msg);
@@ -93,32 +89,25 @@ export default function GamePlayPage() {
   return (
     <div>
       <div className="card">
-        <h1>Round {state.current_round}</h1>
+        <h1 className="page-title">Round {state.current_round}</h1>
         <p>Current player: <strong>{state.current_player}</strong></p>
-        <div className="timer">{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} / {state.settings.minutes_per_turn}:00</div>
+        <div className="timer">
+          {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} / {state.settings.minutes_per_turn}:00
+        </div>
         {elapsed > limit && <p className="muted">Time exceeded — continue when ready.</p>}
-        {wordMode ? (
-          <input
-            placeholder="Word played"
-            value={word}
-            onChange={(e) => setWord(e.target.value)}
-            onKeyDown={onInputKeyDown}
-            autoFocus
-          />
-        ) : (
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="Points (1–1786)"
-            value={points}
-            onChange={(e) => setPoints(e.target.value)}
-            onKeyDown={onInputKeyDown}
-            autoFocus
-          />
-        )}
-        {error && <p style={{ color: "crimson" }}>{error}</p>}
-        <div style={{ display: "flex", gap: ".5rem", marginTop: "1rem", flexWrap: "wrap" }}>
+        <input
+          className="input"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          placeholder="Points (1–1786)"
+          value={points}
+          onChange={(e) => setPoints(e.target.value)}
+          onKeyDown={onInputKeyDown}
+          autoFocus
+        />
+        {error && <p className="error-text">{error}</p>}
+        <div className="btn-row">
           <button className="btn" disabled={submitting} onClick={() => submitTurn("score")}>Submit turn</button>
           <button className="btn secondary" disabled={submitting} onClick={() => submitTurn("challenge")}>Lost challenge</button>
           <button className="btn secondary" disabled={submitting} onClick={() => submitTurn("skip")}>Skip turn</button>

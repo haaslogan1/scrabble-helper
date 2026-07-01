@@ -12,11 +12,11 @@ export default function GamesListPage() {
   return (
     <div>
       <div className="card">
-        <h1>Past games</h1>
-        <Link to="/">← Home</Link>
+        <h1 className="page-title">Past games</h1>
+        <Link to="/" className="back-link muted">← Home</Link>
       </div>
       {games.map((g) => (
-        <Link key={g.id} className="card" to={`/games/${g.id}`} style={{ display: "block" }}>
+        <Link key={g.id} className="card card--link" to={`/games/${g.id}`}>
           <strong>{g.played_date || "Unknown date"}</strong>
           <div className="muted">Winner: {g.winner || "—"}</div>
         </Link>

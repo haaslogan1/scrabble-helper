@@ -5,7 +5,7 @@ export default function GuestRoute({ children }: { children: React.ReactNode }) 
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="card"><p>Loading…</p></div>;
+    return <div className="loading-state">Loading…</div>;
   }
 
   if (user) {

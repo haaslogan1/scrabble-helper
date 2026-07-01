@@ -9,7 +9,6 @@ export default function GameEndPage() {
   const [adjustments, setAdjustments] = useState<Record<string, string>>({});
   const [players, setPlayers] = useState<Array<{ player_id: number; name: string }>>([]);
   const [error, setError] = useState("");
-  const wordMode = false;
 
   useEffect(() => {
     getGameState(gameId).then((state) => {
@@ -34,20 +33,20 @@ export default function GameEndPage() {
 
   return (
     <form className="card" onSubmit={onSubmit}>
-      <h1>End game</h1>
+      <h1 className="page-title">End game</h1>
       <p className="muted">Enter leftover letter penalties (negative numbers) or final adjustments for each player.</p>
       {players.map((p) => (
-        <div key={p.player_id} style={{ marginBottom: ".75rem" }}>
+        <div key={p.player_id} className="form-field">
           <label>{p.name}</label>
           <input
             type="number"
-            placeholder={wordMode ? "Remaining letters" : "Rack penalty (e.g. -12)"}
+            placeholder="Rack penalty (e.g. -12)"
             value={adjustments[String(p.player_id)] || ""}
             onChange={(e) => setAdjustments((prev) => ({ ...prev, [String(p.player_id)]: e.target.value }))}
           />
         </div>
       ))}
-      {error && <p>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
       <button className="btn" type="submit">Finalize game</button>
     </form>
   );

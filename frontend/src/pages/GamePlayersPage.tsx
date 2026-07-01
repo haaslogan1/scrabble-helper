@@ -39,18 +39,19 @@ export default function GamePlayersPage() {
 
   return (
     <div className="card">
-      <h1>Select players</h1>
+      <h1 className="page-title">Select players</h1>
       <p className="muted">Choose saved players or add new ones.</p>
       {players.map((p) => (
-        <label key={p.id} style={{ display: "block", marginBottom: ".5rem" }}>
-          <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} /> {p.name}
+        <label key={p.id} className="checkbox-label">
+          <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />
+          {p.name}
         </label>
       ))}
-      <div style={{ display: "flex", gap: ".5rem", marginTop: "1rem" }}>
+      <div className="inline-form">
         <input placeholder="New player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
         <button type="button" className="btn secondary" onClick={addNew}>Add</button>
       </div>
-      {error && <p>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
       <p><button className="btn" disabled={selected.length < 2} onClick={onContinue}>Next: Turn order</button></p>
     </div>
   );

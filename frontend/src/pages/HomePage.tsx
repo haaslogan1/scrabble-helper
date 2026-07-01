@@ -15,16 +15,16 @@ export default function HomePage() {
     <div className="hero">
       <h1>Welcome, {user?.name}</h1>
       <p className="muted">End-to-end Scrabble scorekeeping and analytics.</p>
-      <div className="grid grid-3">
-        <Link className="card" to="/game/new">
+      <div className="tile-grid">
+        <Link className="card card--link" to="/game/new">
           <h2>Start Game</h2>
           <p>Configure settings, pick players, and begin.</p>
         </Link>
-        <Link className="card" to="/games">
+        <Link className="card card--link" to="/games">
           <h2>Review Past Games</h2>
           <p>{summary.completed_games} completed games</p>
         </Link>
-        <Link className="card" to="/leaderboard">
+        <Link className="card card--link" to="/leaderboard">
           <h2>Scrabble Leaderboard</h2>
           <p>{summary.saved_players} saved players</p>
         </Link>

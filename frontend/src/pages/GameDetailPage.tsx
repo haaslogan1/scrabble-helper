@@ -10,14 +10,14 @@ export default function GameDetailPage() {
     getGameDetail(Number(id)).then(setGame).catch(() => {});
   }, [id]);
 
-  if (!game) return <p>Loading...</p>;
+  if (!game) return <p className="loading-state">Loading...</p>;
 
   return (
     <div>
       <div className="card">
-        <h1>Game on {game.played_date}</h1>
+        <h1 className="page-title">Game on {game.played_date}</h1>
         <p>Winner: <strong>{game.winner}</strong></p>
-        <Link to="/games">← Back to past games</Link> · <Link to="/">Home</Link>
+        <Link to="/games" className="back-link muted">← Back to past games</Link>
       </div>
       <div className="card">
         <h2>Final standings</h2>

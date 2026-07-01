@@ -1,9 +1,11 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import GuestRoute from "./auth/GuestRoute";
+import SiteHeader from "./components/SiteHeader";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import SettingsPage from "./pages/SettingsPage";
 import GameSettingsPage from "./pages/GameSettingsPage";
 import GamePlayersPage from "./pages/GamePlayersPage";
 import GameOrderPage from "./pages/GameOrderPage";
@@ -12,46 +14,52 @@ import GameEndPage from "./pages/GameEndPage";
 import GamesListPage from "./pages/GamesListPage";
 import GameDetailPage from "./pages/GameDetailPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import { ThemeProvider } from "./theme/ThemeContext";
 
-function NavBar() {
-  const { user, logout } = useAuth();
-
+function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <nav className="nav">
-      {user ? (
-        <>
-          <Link to="/">Scrabble Helper</Link>
-          <span className="muted" style={{ flex: 1 }}>{user.name}</span>
-          <button type="button" className="btn secondary" onClick={() => logout()}>
-            Sign out
-          </button>
-        </>
-      ) : (
-        <Link to="/login">Scrabble Helper</Link>
-      )}
-    </nav>
+    <>
+      <SiteHeader />
+      <main className="container app-main">{children}</main>
+    </>
   );
 }
 
 function NavigateToLoginOrHome() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="card"><p>Loading…</p></div>;
+  if (loading) return <div className="loading-state">Loading…</div>;
   return <Navigate to={user ? "/" : "/login"} replace />;
+}
+
+function ProtectedShell({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppShell>{children}</AppShell>
+    </ProtectedRoute>
+  );
 }
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-      <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-      <Route path="/game/new" element={<ProtectedRoute><GameSettingsPage /></ProtectedRoute>} />
-      <Route path="/game/:id/players" element={<ProtectedRoute><GamePlayersPage /></ProtectedRoute>} />
-      <Route path="/game/:id/order" element={<ProtectedRoute><GameOrderPage /></ProtectedRoute>} />
-      <Route path="/game/:id/play" element={<ProtectedRoute><GamePlayPage /></ProtectedRoute>} />
-      <Route path="/game/:id/end" element={<ProtectedRoute><GameEndPage /></ProtectedRoute>} />
-      <Route path="/games" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
-      <Route path="/games/:id" element={<ProtectedRoute><GameDetailPage /></ProtectedRoute>} />
-      <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+      <Route
+        path="/login"
+        element={
+          <GuestRoute>
+            <LoginPage />
+          </GuestRoute>
+        }
+      />
+      <Route path="/" element={<ProtectedShell><HomePage /></ProtectedShell>} />
+      <Route path="/settings" element={<ProtectedShell><SettingsPage /></ProtectedShell>} />
+      <Route path="/game/new" element={<ProtectedShell><GameSettingsPage /></ProtectedShell>} />
+      <Route path="/game/:id/players" element={<ProtectedShell><GamePlayersPage /></ProtectedShell>} />
+      <Route path="/game/:id/order" element={<ProtectedShell><GameOrderPage /></ProtectedShell>} />
+      <Route path="/game/:id/play" element={<ProtectedShell><GamePlayPage /></ProtectedShell>} />
+      <Route path="/game/:id/end" element={<ProtectedShell><GameEndPage /></ProtectedShell>} />
+      <Route path="/games" element={<ProtectedShell><GamesListPage /></ProtectedShell>} />
+      <Route path="/games/:id" element={<ProtectedShell><GameDetailPage /></ProtectedShell>} />
+      <Route path="/leaderboard" element={<ProtectedShell><LeaderboardPage /></ProtectedShell>} />
       <Route path="*" element={<NavigateToLoginOrHome />} />
     </Routes>
   );
@@ -59,11 +67,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <div className="container">
-        <NavBar />
+    <ThemeProvider>
+      <AuthProvider>
         <AppRoutes />
-      </div>
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

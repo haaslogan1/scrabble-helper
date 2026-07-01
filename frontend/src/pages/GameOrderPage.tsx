@@ -45,19 +45,19 @@ export default function GameOrderPage() {
 
   return (
     <div className="card">
-      <h1>Turn order</h1>
+      <h1 className="page-title">Turn order</h1>
       <p className="muted">Randomize first player, then adjust order if needed.</p>
       <button type="button" className="btn secondary" onClick={onRandom}>Random first player</button>
-      <ol>
+      <ol className="order-list">
         {order.map((pid, idx) => (
-          <li key={pid} style={{ margin: ".5rem 0" }}>
-            {names[pid]}
-            <button type="button" className="btn secondary" style={{ marginLeft: ".5rem" }} onClick={() => move(idx, -1)}>Up</button>
-            <button type="button" className="btn secondary" style={{ marginLeft: ".5rem" }} onClick={() => move(idx, 1)}>Down</button>
+          <li key={pid}>
+            <span style={{ flex: 1 }}>{names[pid]}</span>
+            <button type="button" className="btn secondary" onClick={() => move(idx, -1)}>Up</button>
+            <button type="button" className="btn secondary" onClick={() => move(idx, 1)}>Down</button>
           </li>
         ))}
       </ol>
-      {error && <p>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
       <button className="btn" onClick={onBegin}>Begin game</button>
     </div>
   );
