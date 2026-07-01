@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+node_modules/
+frontend/dist/
+test_scrabble_helper.db
+**/test_*.db
+*.log
+*.egg-info/
+.DS_Store
+frontend/tsconfig.tsbuildinfo
