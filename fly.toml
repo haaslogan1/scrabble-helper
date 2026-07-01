@@ -1,0 +1,27 @@
+app = "scrabble-helper"
+primary_region = "iad"
+
+[build]
+
+[env]
+  BASE_URL = "https://scrabble-helper.fly.dev"
+  FRONTEND_URL = "https://scrabble-helper.fly.dev"
+  COOKIE_SECURE = "true"
+  DEV_AUTH_BYPASS = "false"
+  DATABASE_URL = "sqlite:////data/scrabble.db"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[mounts]]
+  source = "scrabble_helper_data"
+  destination = "/data"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
