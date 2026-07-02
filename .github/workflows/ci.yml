@@ -39,6 +39,13 @@ jobs:
       - name: Install backend
         working-directory: backend
         run: pip install -r requirements-dev.txt
+      - name: Postgres schema smoke
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://scrabble:scrabble@localhost:5432/scrabble_helper
+          DEV_AUTH_BYPASS: "true"
+          SESSION_SECRET: test-secret
+        run: python scripts/ci_postgres_smoke.py
       - name: Test
         working-directory: backend
         env:
