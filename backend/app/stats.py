@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import Numeric, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round
 
 LeaderboardScope = Literal["all", "friends", "manual"]
+
+
+def _round2(expr):
+    """PostgreSQL only implements round(numeric, digits), not round(float, digits)."""
+    return func.round(cast(expr, Numeric), 2)
 
 
 def _user_game_ids(db: Session, user_id: int) -> select:
@@ -51,7 +56,7 @@ def total_points_all_time(
 ) -> list[dict[str, Any]]:
     game_ids = _user_game_ids(db, user_id)
     rows = db.execute(
-        select(Player.name, func.round(func.sum(GamePlayer.total_score), 2))
+        select(Player.name, _round2(func.sum(GamePlayer.total_score)))
         .join(GamePlayer, GamePlayer.player_id == Player.id)
         .where(GamePlayer.game_id.in_(game_ids), *_player_scope_clause(user_id, scope))
         .group_by(Player.id)
@@ -67,7 +72,7 @@ def avg_points_per_play(
     rows = db.execute(
         select(
             Player.name,
-            func.round(func.sum(Round.score) * 1.0 / func.count(Round.id), 2),
+            _round2(func.sum(Round.score) * 1.0 / func.count(Round.id)),
         )
         .join(Round, Round.player_id == Player.id)
         .where(
@@ -86,7 +91,7 @@ def avg_total_points_per_game(
 ) -> list[dict[str, Any]]:
     game_ids = _user_game_ids(db, user_id)
     rows = db.execute(
-        select(Player.name, func.round(func.avg(GamePlayer.total_score), 2))
+        select(Player.name, _round2(func.avg(GamePlayer.total_score)))
         .join(GamePlayer, GamePlayer.player_id == Player.id)
         .where(GamePlayer.game_id.in_(game_ids), *_player_scope_clause(user_id, scope))
         .group_by(Player.id)

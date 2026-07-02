@@ -9,6 +9,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -27,16 +28,46 @@ def _stamp_db_head() -> None:
     backend_dir = Path(__file__).resolve().parents[1]
     cfg = Config(str(backend_dir / "alembic.ini"))
     cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS alembic_version ("
+                    "version_num VARCHAR(64) NOT NULL, "
+                    "CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num))"
+                )
+            )
+            conn.execute(
+                text("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(64)")
+            )
     command.stamp(cfg, "head")
+
+
+def _reset_schema() -> None:
+    dialect = engine.dialect.name
+    if dialect == "postgresql":
+        with engine.connect() as conn:
+            conn.execute(text("DROP SCHEMA public CASCADE"))
+            conn.execute(text("CREATE SCHEMA public"))
+            conn.commit()
+        engine.dispose()
+    else:
+        Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    _stamp_db_head()
 
 
 @pytest.fixture(scope="session", autouse=True)
 def reset_db():
     """Fresh schema each pytest invocation (local SQLite file otherwise accumulates users)."""
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    _stamp_db_head()
+    _reset_schema()
     yield
+
+
+@pytest.fixture(autouse=True)
+def skip_lifespan_migrations(monkeypatch):
+    """Tests build schema via create_all; avoid Alembic upgrade conflicts on PostgreSQL."""
+    monkeypatch.setattr("app.main.run_migrations", lambda: None)
 
 
 @pytest.fixture()

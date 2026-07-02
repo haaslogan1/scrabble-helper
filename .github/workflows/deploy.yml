@@ -1,0 +1,72 @@
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "staging-only redeploy (prod never manual in Phase 0)"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+
+jobs:
+  deploy:
+    if: >
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy staging
+        run: flyctl deploy --config fly.staging.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke staging
+        working-directory: backend
+        run: pip install httpx && python scripts/smoke_test.py --retries 12
+        env:
+          BASE_URL: https://scrabble-helper-staging.fly.dev
+
+      - name: Save previous prod release image
+        if: github.event_name == 'workflow_run'
+        id: prev
+        run: |
+          IMAGE=$(flyctl releases list -a scrabble-helper -j | jq -r '.[0].ImageRef')
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy production canary
+        if: github.event_name == 'workflow_run'
+        run: flyctl deploy --strategy canary --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke production
+        if: github.event_name == 'workflow_run'
+        id: smoke_prod
+        working-directory: backend
+        run: pip install httpx && python scripts/smoke_test.py --retries 12
+        env:
+          BASE_URL: https://scrabble-helper.fly.dev
+
+      - name: Rollback prod on smoke failure
+        if: github.event_name == 'workflow_run' && failure() && steps.smoke_prod.outcome == 'failure'
+        run: flyctl deploy --image "${{ steps.prev.outputs.image }}" -a scrabble-helper --strategy immediate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Fail workflow after rollback
+        if: github.event_name == 'workflow_run' && failure() && steps.smoke_prod.outcome == 'failure'
+        run: exit 1

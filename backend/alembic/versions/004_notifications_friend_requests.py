@@ -1,6 +1,6 @@
 """notifications and friend requests
 
-Revision ID: 004_notifications_friend_requests
+Revision ID: 004_notifications
 Revises: 003_friends_username
 Create Date: 2026-07-01
 
@@ -11,7 +11,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "004_notifications_friend_requests"
+revision: str = "004_notifications"
 down_revision: Union[str, None] = "003_friends_username"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
