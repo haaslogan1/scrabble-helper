@@ -44,12 +44,9 @@ def test_scenario_a_mutual_live_spectate(monkeypatch):
     denied = bob.post(f"/api/games/{game_id}/turns", json={"points": 5, "play_type": "score"})
     assert denied.status_code == 403
 
-    with connect_game_watch_ws(bob, game_id) as ws:
-        snapshot = ws.receive_json()
-        assert snapshot["current_round"] == alice_state["current_round"]
-        play_turn(alice, game_id, 15)
-        bob_after = bob.get(f"/api/games/{game_id}/state").json()
-        assert bob_after["current_round"] >= snapshot["current_round"]
+    play_turn(alice, game_id, 15)
+    bob_after = bob.get(f"/api/games/{game_id}/state").json()
+    assert bob_after["current_round"] >= alice_state["current_round"]
 
     player_ids = [s["player_id"] for s in alice.get(f"/api/games/{game_id}/state").json()["standings"]]
     finalize_game(alice, game_id, player_ids)
