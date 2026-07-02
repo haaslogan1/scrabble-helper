@@ -5,11 +5,13 @@ from typing import Any
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from starlette.responses import RedirectResponse
 
 from app.config import settings
 from app.email_validation import validate_email
+from app.friends import assign_default_username
 from app.models import User
 from app.passwords import hash_password, validate_password_policy, verify_password
 
@@ -37,11 +39,33 @@ def get_or_create_user(db: Session, *, email: str, name: str, provider_sub: str)
             user.name = name
             db.commit()
             db.refresh(user)
+        if not user.username:
+            assign_default_username(db, user)
         return user
+
+    existing = db.query(User).filter(User.email == email).one_or_none()
+    if existing:
+        existing.provider = "google"
+        existing.provider_sub = provider_sub
+        existing.name = name
+        db.commit()
+        db.refresh(existing)
+        if not existing.username:
+            assign_default_username(db, existing)
+        return existing
+
     user = User(email=email, name=name, provider="google", provider_sub=provider_sub)
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists. Try signing in with email instead.",
+        ) from exc
+    assign_default_username(db, user)
     return user
 
 
@@ -105,6 +129,7 @@ def register_basic_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+    assign_default_username(db, user)
     request.session["user_id"] = user.id
     return user
 

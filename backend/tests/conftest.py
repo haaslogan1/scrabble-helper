@@ -3,8 +3,11 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -20,11 +23,19 @@ from app.main import app
 from app.models import User
 
 
+def _stamp_db_head() -> None:
+    backend_dir = Path(__file__).resolve().parents[1]
+    cfg = Config(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    command.stamp(cfg, "head")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def reset_db():
     """Fresh schema each pytest invocation (local SQLite file otherwise accumulates users)."""
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    _stamp_db_head()
     yield
 
 
