@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import os
 import sys
-import time
 import uuid
 from pathlib import Path
 
@@ -45,42 +43,18 @@ def _stamp_db_head() -> None:
     command.stamp(cfg, "head")
 
 
-def _debug_log(hypothesis_id: str, message: str, data: dict | None = None) -> None:
-    # #region agent log
-    log_path = Path(__file__).resolve().parents[2] / "debug-378b54.log"
-    payload = {
-        "sessionId": "378b54",
-        "runId": os.environ.get("CI", "local"),
-        "hypothesisId": hypothesis_id,
-        "location": "tests/conftest.py",
-        "message": message,
-        "data": data or {},
-        "timestamp": int(time.time() * 1000),
-    }
-    with log_path.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(payload) + "\n")
-    # #endregion
-
-
 def _reset_schema() -> None:
     dialect = engine.dialect.name
-    _debug_log("H-A", "reset_schema start", {"dialect": dialect})
     if dialect == "postgresql":
         with engine.connect() as conn:
             conn.execute(text("DROP SCHEMA public CASCADE"))
             conn.execute(text("CREATE SCHEMA public"))
             conn.commit()
         engine.dispose()
-        _debug_log("H-B", "postgresql engine pool disposed after schema reset")
     else:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     _stamp_db_head()
-    _debug_log(
-        "H-A",
-        "reset_schema complete",
-        {"tables": sorted(Base.metadata.tables.keys())},
-    )
 
 
 @pytest.fixture(scope="session", autouse=True)
