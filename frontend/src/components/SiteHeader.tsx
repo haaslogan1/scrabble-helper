@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import NotificationBell from "./NotificationBell";
 import UserMenu from "./UserMenu";
 
 export default function SiteHeader() {
@@ -7,7 +8,10 @@ export default function SiteHeader() {
       <Link to="/" className="site-header__brand">
         Scrabble Helper
       </Link>
-      <UserMenu />
+      <div className="site-header__actions">
+        <NotificationBell />
+        <UserMenu />
+      </div>
     </header>
   );
 }

@@ -129,3 +129,4 @@ _Reported by QA agent. Review and assign to dev agent as needed._
 
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|
+| 2026-06-30 | Dev | Live play | No warning when a game runs 2.5+ hours | Start a game, leave it inactive (no turns) for 2.5+ hours; user should be warned the game is ending in 5 mins if they do not play a turn or acknowledge the error and press 'continue'. Currently, no prompt appears. |

@@ -14,6 +14,7 @@ import GameEndPage from "./pages/GameEndPage";
 import GamesListPage from "./pages/GamesListPage";
 import GameDetailPage from "./pages/GameDetailPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import FindFriendsPage from "./pages/FindFriendsPage";
 import { ThemeProvider } from "./theme/ThemeContext";
 
 function AppShell({ children }: { children: React.ReactNode }) {
@@ -60,6 +61,7 @@ function AppRoutes() {
       <Route path="/games" element={<ProtectedShell><GamesListPage /></ProtectedShell>} />
       <Route path="/games/:id" element={<ProtectedShell><GameDetailPage /></ProtectedShell>} />
       <Route path="/leaderboard" element={<ProtectedShell><LeaderboardPage /></ProtectedShell>} />
+      <Route path="/friends" element={<ProtectedShell><FindFriendsPage /></ProtectedShell>} />
       <Route path="*" element={<NavigateToLoginOrHome />} />
     </Routes>
   );

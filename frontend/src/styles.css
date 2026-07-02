@@ -110,6 +110,150 @@ a:hover {
   color: var(--accent);
 }
 
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Notification bell */
+.notification-bell {
+  position: relative;
+}
+
+.notification-bell__trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.notification-bell__trigger:hover {
+  border-color: var(--accent);
+}
+
+.notification-bell__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentColor;
+}
+
+.notification-bell__badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.notification-bell__dropdown {
+  position: fixed;
+  top: 3.25rem;
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  left: auto;
+  width: min(22rem, calc(100vw - 1.5rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  max-height: min(24rem, calc(100vh - 4.5rem));
+  overflow: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+}
+
+.notification-bell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.notification-bell__mark-all {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.notification-bell__empty {
+  padding: 1rem;
+  margin: 0;
+}
+
+.notification-bell__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-bell__item {
+  border-bottom: 1px solid var(--border);
+}
+
+.notification-bell__item--unread {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.notification-bell__item-body {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notification-bell__item-body:disabled {
+  cursor: default;
+}
+
+.notification-bell__title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.notification-bell__text {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+.notification-bell__time {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.notification-bell__actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.notification-bell__actions .btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 /* User menu */
 .user-menu {
   position: relative;
@@ -611,4 +755,68 @@ tbody tr:hover {
   padding: 2rem;
   text-align: center;
   color: var(--muted);
+}
+
+/* Tags & friends */
+.tag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag--ok {
+  background: color-mix(in srgb, #2e7d32 18%, transparent);
+  color: #2e7d32;
+}
+
+.tag--warn {
+  background: color-mix(in srgb, #ed6c02 18%, transparent);
+  color: #ed6c02;
+}
+
+.friend-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.friend-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.segmented__btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.segmented__btn--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.banner {
+  margin-bottom: 1rem;
+}
+
+.banner--info {
+  border-left: 4px solid var(--accent);
 }
