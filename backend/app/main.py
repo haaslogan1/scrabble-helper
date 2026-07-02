@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -126,8 +127,16 @@ app.add_middleware(
 )
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health(db: bool = Query(False)) -> dict[str, str]:
+    if not db:
+        return {"status": "ok"}
+    try:
+        db_session = SessionLocal()
+        db_session.execute(text("SELECT 1"))
+        db_session.close()
+        return {"status": "ok", "db": "ok"}
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
 
 
 @app.get("/auth/config")

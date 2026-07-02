@@ -10,6 +10,13 @@ def test_health(client):
     assert response.json()["status"] == "ok"
 
 
+@pytest.mark.unit
+def test_health_db(client):
+    response = client.get("/health", params={"db": True})
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "db": "ok"}
+
+
 @pytest.mark.integration
 def test_auth_me(client):
     response = client.get("/auth/me")
