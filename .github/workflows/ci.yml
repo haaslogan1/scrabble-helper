@@ -39,6 +39,13 @@ jobs:
       - name: Install backend
         working-directory: backend
         run: pip install -r requirements-dev.txt
+      - name: Debug scenario A on PostgreSQL
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://scrabble:scrabble@localhost:5432/scrabble_helper
+          DEV_AUTH_BYPASS: "true"
+          SESSION_SECRET: test-secret
+        run: python scripts/debug_scenario_a.py
       - name: Test
         working-directory: backend
         env:
