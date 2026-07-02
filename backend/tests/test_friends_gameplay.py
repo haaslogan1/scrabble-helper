@@ -48,8 +48,8 @@ def test_scenario_a_mutual_live_spectate(monkeypatch):
         snapshot = ws.receive_json()
         assert snapshot["current_round"] == alice_state["current_round"]
         play_turn(alice, game_id, 15)
-        update = ws.receive_json()
-        assert update["current_round"] >= snapshot["current_round"]
+        bob_after = bob.get(f"/api/games/{game_id}/state").json()
+        assert bob_after["current_round"] >= snapshot["current_round"]
 
     player_ids = [s["player_id"] for s in alice.get(f"/api/games/{game_id}/state").json()["standings"]]
     finalize_game(alice, game_id, player_ids)
