@@ -28,6 +28,10 @@ export default function HomePage() {
           <h2>Scrabble Leaderboard</h2>
           <p>{summary.saved_players} saved players</p>
         </Link>
+        <Link className="card card--link" to="/friends">
+          <h2>Find Friends</h2>
+          <p>Add friends and play live together</p>
+        </Link>
       </div>
     </div>
   );

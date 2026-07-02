@@ -12,7 +12,10 @@ export default function GamePlayersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    listPlayers().then(setPlayersList).catch(() => {});
+    listPlayers().then((list) => {
+      setPlayersList(list);
+      setSelected(list.filter((p) => p.is_friend).map((p) => p.id));
+    }).catch(() => {});
   }, []);
 
   function toggle(id: number) {
@@ -33,18 +36,22 @@ export default function GamePlayersPage() {
       await setPlayers(gameId, selected);
       navigate(`/game/${gameId}/order`);
     } catch (err) {
-      setError(String(err));
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
   return (
     <div className="card">
       <h1 className="page-title">Select players</h1>
-      <p className="muted">Choose saved players or add new ones.</p>
+      <p className="muted">Choose saved players or add new ones. Friends are pre-selected.</p>
       {players.map((p) => (
         <label key={p.id} className="checkbox-label">
           <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />
           {p.name}
+          {p.is_friend && <span className="tag tag--ok"> Friend</span>}
+          {p.is_friend && p.mutual === false && (
+            <span className="tag tag--warn"> Needs to add you back for live play</span>
+          )}
         </label>
       ))}
       <div className="inline-form">

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.email_send import send_verification_email
 from app.email_validation import validate_email
+from app.friends import assign_default_username
 from app.models import EmailVerification, User
 from app.passwords import hash_password, validate_password_policy
 
@@ -158,5 +159,6 @@ def complete_registration(
     db.delete(pending)
     db.commit()
     db.refresh(user)
+    assign_default_username(db, user)
     request_session["user_id"] = user.id
     return user

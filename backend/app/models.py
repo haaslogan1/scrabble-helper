@@ -34,11 +34,27 @@ class PlayType(str, enum.Enum):
     skip = "skip"
 
 
+class FriendRequestStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
+
+
+class NotificationType(str, enum.Enum):
+    friend_request = "friend_request"
+    friend_request_accepted = "friend_request_accepted"
+    friend_request_declined = "friend_request_declined"
+    friend_mutual = "friend_mutual"
+    live_game_started = "live_game_started"
+    game_completed = "game_completed"
+
+
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False, default="google")
     provider_sub: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -49,10 +65,64 @@ class User(Base):
         DateTime, default=datetime.utcnow, nullable=False
     )
 
-    players: Mapped[list[Player]] = relationship(back_populates="owner")
+    players: Mapped[list["Player"]] = relationship(
+        back_populates="owner",
+        foreign_keys="[Player.owner_user_id]",
+    )
     games: Mapped[list[Game]] = relationship(back_populates="owner")
 
     __table_args__ = (UniqueConstraint("provider", "provider_sub"),)
+
+
+class Friendship(Base):
+    __tablename__ = "friendships"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    friend_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    __table_args__ = (UniqueConstraint("user_id", "friend_user_id"),)
+
+
+class FriendRequest(Base):
+    __tablename__ = "friend_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    from_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    status: Mapped[FriendRequestStatus] = mapped_column(
+        Enum(FriendRequestStatus), default=FriendRequestStatus.pending, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    from_user: Mapped[User] = relationship(foreign_keys=[from_user_id])
+    to_user: Mapped[User] = relationship(foreign_keys=[to_user_id])
+
+    __table_args__ = (UniqueConstraint("from_user_id", "to_user_id"),)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(String(512), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
 
 
 class EmailVerification(Base):
@@ -76,13 +146,18 @@ class Player(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     owner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    linked_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
 
-    owner: Mapped[User] = relationship(back_populates="players")
+    owner: Mapped[User] = relationship(back_populates="players", foreign_keys=[owner_user_id])
+    linked_user: Mapped[User | None] = relationship(foreign_keys=[linked_user_id])
 
-    __table_args__ = (UniqueConstraint("owner_user_id", "name"),)
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "name"),
+        UniqueConstraint("owner_user_id", "linked_user_id"),
+    )
 
 
 class Game(Base):

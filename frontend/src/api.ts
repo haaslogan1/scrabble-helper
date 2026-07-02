@@ -1,5 +1,55 @@
-export type User = { id: number; email: string; name: string; is_admin?: boolean };
-export type Player = { id: number; name: string };
+export type User = {
+  id: number;
+  email: string;
+  name: string;
+  username?: string | null;
+  is_admin?: boolean;
+};
+export type Player = {
+  id: number;
+  name: string;
+  linked_user_id?: number | null;
+  is_friend?: boolean;
+  mutual?: boolean | null;
+};
+export type Friend = {
+  id: number;
+  username: string | null;
+  name: string;
+  mutual: boolean;
+};
+export type FriendSendResult = {
+  id: number;
+  username: string | null;
+  name: string;
+  request_id?: number;
+  status: string;
+  mutual?: boolean | null;
+};
+export type FriendRequest = {
+  id: number;
+  from_user: UserSearchResult;
+  created_at: string;
+};
+export type Notification = {
+  id: number;
+  type: string;
+  title: string;
+  body: string;
+  payload: Record<string, number | string>;
+  read: boolean;
+  created_at: string;
+};
+export type NotificationList = {
+  notifications: Notification[];
+  unread_count: number;
+};
+export type UserSearchResult = {
+  id: number;
+  username: string | null;
+  name: string;
+  reason?: string;
+};
 export type GameSettings = {
   minutes_per_turn: number;
   input_mode?: string;
@@ -14,6 +64,7 @@ export type Standing = {
 export type GameState = {
   id: number;
   status: string;
+  role?: "owner" | "spectator";
   settings: GameSettings;
   current_round: number;
   current_turn_index: number;
@@ -38,6 +89,7 @@ export type GameState = {
     word?: string | null;
   }>;
 };
+export type LeaderboardScope = "all" | "friends" | "manual";
 export type Leaderboard = Record<string, Array<Record<string, string | number>>>;
 
 export class AuthError extends Error {
@@ -119,21 +171,66 @@ export const login = (email: string, password: string) =>
   api<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
 
 export const getMe = () => api<User>("/auth/me");
+export const updateUsername = (username: string) =>
+  api<User>("/api/me", { method: "PATCH", body: JSON.stringify({ username }) });
 export const logout = () => api<{ status: string }>("/auth/logout", { method: "POST" });
-export const getHome = () => api<{ completed_games: number; in_progress_games: number; saved_players: number }>("/api/home");
+export const getHome = () =>
+  api<{ completed_games: number; in_progress_games: number; saved_players: number }>("/api/home");
 export const listPlayers = () => api<Player[]>("/api/players");
-export const createPlayer = (name: string) => api<Player>("/api/players", { method: "POST", body: JSON.stringify({ name }) });
+export const createPlayer = (name: string) =>
+  api<Player>("/api/players", { method: "POST", body: JSON.stringify({ name }) });
+export const listFriends = () => api<Friend[]>("/api/friends");
+export const sendFriendRequest = (body: { user_id?: number; username?: string }) =>
+  api<FriendSendResult>("/api/friends", { method: "POST", body: JSON.stringify(body) });
+export const addFriend = sendFriendRequest;
+export const listIncomingFriendRequests = () => api<FriendRequest[]>("/api/friends/requests/incoming");
+export const acceptFriendRequest = (requestId: number) =>
+  api<Friend>(`/api/friends/requests/${requestId}/accept`, { method: "POST" });
+export const denyFriendRequest = (requestId: number) =>
+  api<{ status: string }>(`/api/friends/requests/${requestId}/deny`, { method: "POST" });
+export const removeFriend = (userId: number) =>
+  api<{ status: string }>(`/api/friends/${userId}`, { method: "DELETE" });
+export const getNotifications = () => api<NotificationList>("/api/notifications");
+export const getUnreadCount = () => api<{ unread_count: number }>("/api/notifications/unread-count");
+export const markNotificationRead = (id: number) =>
+  api<Notification>(`/api/notifications/${id}/read`, { method: "POST" });
+export const markAllNotificationsRead = () =>
+  api<{ status: string }>("/api/notifications/read-all", { method: "POST" });
+export const acceptNotificationFriendRequest = (id: number) =>
+  api<Friend>(`/api/notifications/${id}/accept`, { method: "POST" });
+export const denyNotificationFriendRequest = (id: number) =>
+  api<{ status: string }>(`/api/notifications/${id}/deny`, { method: "POST" });
+export const friendSuggestions = () => api<UserSearchResult[]>("/api/friends/suggestions");
+export const searchUsers = (q: string) =>
+  api<UserSearchResult[]>(`/api/users/search?q=${encodeURIComponent(q)}`);
 export const createGame = (settings: Partial<GameSettings> & Pick<GameSettings, "minutes_per_turn" | "show_live_leaderboard">) =>
   api<{ id: number }>("/api/games", { method: "POST", body: JSON.stringify({ settings }) });
-export const setPlayers = (gameId: number, player_ids: number[]) => api<GameState>(`/api/games/${gameId}/players`, { method: "PUT", body: JSON.stringify({ player_ids }) });
-export const setTurnOrder = (gameId: number, player_ids: number[]) => api<GameState>(`/api/games/${gameId}/turn-order`, { method: "POST", body: JSON.stringify({ player_ids }) });
-export const randomFirst = (gameId: number) => api<GameState>(`/api/games/${gameId}/random-first`, { method: "POST" });
-export const beginGame = (gameId: number) => api<GameState>(`/api/games/${gameId}/begin`, { method: "POST" });
-export const recordTurn = (gameId: number, body: Record<string, unknown>) => api<GameState>(`/api/games/${gameId}/turns`, { method: "POST", body: JSON.stringify(body) });
-export const nextPlayer = (gameId: number) => api<GameState>(`/api/games/${gameId}/next-player`, { method: "POST" });
-export const endGame = (gameId: number) => api<GameState>(`/api/games/${gameId}/end`, { method: "POST" });
-export const finalizeGame = (gameId: number, rack_adjustments: Record<string, number>) => api<GameState>(`/api/games/${gameId}/finalize`, { method: "POST", body: JSON.stringify({ rack_adjustments }) });
+export const setPlayers = (gameId: number, player_ids: number[]) =>
+  api<GameState>(`/api/games/${gameId}/players`, { method: "PUT", body: JSON.stringify({ player_ids }) });
+export const setTurnOrder = (gameId: number, player_ids: number[]) =>
+  api<GameState>(`/api/games/${gameId}/turn-order`, { method: "POST", body: JSON.stringify({ player_ids }) });
+export const randomFirst = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/random-first`, { method: "POST" });
+export const beginGame = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/begin`, { method: "POST" });
+export const recordTurn = (gameId: number, body: Record<string, unknown>) =>
+  api<GameState>(`/api/games/${gameId}/turns`, { method: "POST", body: JSON.stringify(body) });
+export const nextPlayer = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/next-player`, { method: "POST" });
+export const endGame = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/end`, { method: "POST" });
+export const finalizeGame = (gameId: number, rack_adjustments: Record<string, number>) =>
+  api<GameState>(`/api/games/${gameId}/finalize`, { method: "POST", body: JSON.stringify({ rack_adjustments }) });
 export const getGameState = (gameId: number) => api<GameState>(`/api/games/${gameId}/state`);
 export const getGameDetail = (gameId: number) => api<GameState>(`/api/games/${gameId}`);
-export const listGames = (status?: string) => api<Array<{ id: number; status: string; played_date: string | null; winner: string | null }>>(`/api/games${status ? `?status=${status}` : ""}`);
-export const getLeaderboard = () => api<Leaderboard>("/api/leaderboard");
+export const listGames = (status?: string) =>
+  api<Array<{ id: number; status: string; played_date: string | null; winner: string | null }>>(
+    `/api/games${status ? `?status=${status}` : ""}`,
+  );
+export const getLeaderboard = (scope: LeaderboardScope = "all") =>
+  api<Leaderboard>(`/api/leaderboard?scope=${scope}`);
+
+export function gameWatchUrl(gameId: number): string {
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/api/games/${gameId}/watch`;
+}

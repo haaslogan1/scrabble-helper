@@ -6,7 +6,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,16 +14,24 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
-from app import auth, email_verification, services, stats
+from app import auth, email_verification, friends, notifications, services, stats
 from app.config import settings
-from app.database import Base, SessionLocal, engine, get_db
+from app.database import SessionLocal, get_db
+from app.email_send import smtp_configured
 from app.models import GameStatus, User
+from app.realtime import game_connections
 from app.schemas import (
     FinalizeGame,
+    FriendAdd,
+    FriendOut,
+    FriendRequestOut,
+    FriendSendOut,
     GameCreate,
     GamePlayersUpdate,
     HomeOut,
     LoginRequest,
+    NotificationListOut,
+    NotificationOut,
     PlayerCreate,
     PlayerOut,
     RegisterRequest,
@@ -33,10 +41,42 @@ from app.schemas import (
     TurnOrderUpdate,
     TurnRecord,
     UserOut,
+    UserSearchOut,
+    UsernameUpdate,
 )
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 logger = logging.getLogger(__name__)
+
+
+def _ws_current_user(websocket: WebSocket, db: Session) -> User:
+    if settings.dev_auth_bypass:
+        user = db.query(User).filter(User.email == settings.dev_user_email).one_or_none()
+        if user is None:
+            user = User(
+                email=settings.dev_user_email,
+                name=settings.dev_user_name,
+                provider="dev",
+                provider_sub="dev-local",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        return user
+    session = websocket.scope.get("session") or {}
+    user_id = session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
+
+async def _broadcast_game_state(game_id: int) -> None:
+    with SessionLocal() as db:
+        state = services.game_state_broadcast(db, game_id)
+    await game_connections.broadcast(f"game:{game_id}", state)
 
 
 def run_migrations() -> None:
@@ -49,12 +89,23 @@ def run_migrations() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
-        Base.metadata.create_all(bind=engine)
         run_migrations()
         with SessionLocal() as db:
             auth.bootstrap_admin(db)
+        if settings.email_verification_enabled and not smtp_configured():
+            if settings.email_verification_dev_expose_code:
+                logger.warning(
+                    "Email verification enabled but SMTP is not configured; "
+                    "dev codes will be exposed in API responses."
+                )
+            else:
+                logger.error(
+                    "Email verification enabled but SMTP is not configured. "
+                    "Set SMTP_HOST and SMTP_FROM (Fly secrets) or registration will fail."
+                )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Database unavailable at startup: %s", exc)
+        logger.exception("Database startup failed")
+        raise
     yield
 
 
@@ -150,6 +201,128 @@ def auth_me(request: Request, db: Session = Depends(get_db)) -> User:
     return auth.get_current_user(request, db)
 
 
+@app.patch("/api/me", response_model=UserOut)
+def api_update_me(
+    body: UsernameUpdate, request: Request, db: Session = Depends(get_db)
+) -> User:
+    user = auth.get_current_user(request, db)
+    return friends.set_username(db, user, body.username)
+
+
+@app.get("/api/friends", response_model=list[FriendOut])
+def api_list_friends(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return friends.list_friends(db, user.id)
+
+
+@app.post("/api/friends", response_model=FriendSendOut)
+def api_add_friend(body: FriendAdd, request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return friends.add_friend(
+        db, user.id, friend_user_id=body.user_id, username=body.username
+    )
+
+
+@app.get("/api/friends/requests/incoming", response_model=list[FriendRequestOut])
+def api_incoming_friend_requests(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return friends.list_incoming_requests(db, user.id)
+
+
+@app.post("/api/friends/requests/{request_id}/accept", response_model=FriendOut)
+def api_accept_friend_request(
+    request_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return friends.accept_friend_request(db, user.id, request_id)
+
+
+@app.post("/api/friends/requests/{request_id}/deny")
+def api_deny_friend_request(
+    request_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return friends.decline_friend_request(db, user.id, request_id)
+
+
+@app.get("/api/notifications", response_model=NotificationListOut)
+def api_list_notifications(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return {
+        "notifications": notifications.list_notifications(db, user.id),
+        "unread_count": notifications.unread_count(db, user.id),
+    }
+
+
+@app.get("/api/notifications/unread-count")
+def api_unread_notification_count(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return {"unread_count": notifications.unread_count(db, user.id)}
+
+
+@app.post("/api/notifications/{notification_id}/read", response_model=NotificationOut)
+def api_mark_notification_read(
+    notification_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return notifications.mark_read(db, user.id, notification_id)
+
+
+@app.post("/api/notifications/{notification_id}/dismiss")
+def api_dismiss_notification(
+    notification_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return notifications.dismiss(db, user.id, notification_id)
+
+
+@app.post("/api/notifications/read-all")
+def api_mark_all_notifications_read(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return notifications.mark_all_read(db, user.id)
+
+
+@app.post("/api/notifications/{notification_id}/accept", response_model=FriendOut)
+def api_accept_notification_friend_request(
+    notification_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return friends.accept_friend_request_from_notification(db, user.id, notification_id)
+
+
+@app.post("/api/notifications/{notification_id}/deny")
+def api_deny_notification_friend_request(
+    notification_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    return friends.decline_friend_request_from_notification(db, user.id, notification_id)
+
+
+@app.delete("/api/friends/{friend_user_id}")
+def api_remove_friend(
+    friend_user_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    friends.remove_friend(db, user.id, friend_user_id)
+    return {"status": "ok"}
+
+
+@app.get("/api/friends/suggestions", response_model=list[UserSearchOut])
+def api_friend_suggestions(request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return friends.friend_suggestions(db, user.id)
+
+
+@app.get("/api/users/search", response_model=list[UserSearchOut])
+def api_search_users(
+    request: Request,
+    db: Session = Depends(get_db),
+    q: str = Query(default="", min_length=1),
+):
+    user = auth.get_current_user(request, db)
+    return friends.search_users(db, user.id, q)
+
+
 @app.get("/api/admin/users")
 def api_admin_users(request: Request, db: Session = Depends(get_db)):
     auth.require_admin(request, db)
@@ -195,7 +368,8 @@ def api_home(request: Request, db: Session = Depends(get_db)):
 @app.get("/api/players", response_model=list[PlayerOut])
 def api_list_players(request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
-    return services.list_players(db, user.id)
+    players = services.list_players(db, user.id)
+    return [friends.player_out_extra(db, user.id, p) for p in players]
 
 
 @app.post("/api/players", response_model=PlayerOut)
@@ -203,7 +377,8 @@ def api_create_player(
     body: PlayerCreate, request: Request, db: Session = Depends(get_db)
 ):
     user = auth.get_current_user(request, db)
-    return services.create_player(db, user.id, body.name)
+    player = services.create_player(db, user.id, body.name)
+    return friends.player_out_extra(db, user.id, player)
 
 
 @app.post("/api/games")
@@ -217,7 +392,7 @@ def api_create_game(
 
 
 @app.put("/api/games/{game_id}/players")
-def api_set_players(
+async def api_set_players(
     game_id: int,
     body: GamePlayersUpdate,
     request: Request,
@@ -225,11 +400,12 @@ def api_set_players(
 ):
     user = auth.get_current_user(request, db)
     game = services.set_game_players(db, user.id, game_id, body.player_ids)
+    await _broadcast_game_state(game.id)
     return services.game_state(db, user.id, game.id)
 
 
 @app.post("/api/games/{game_id}/turn-order")
-def api_turn_order(
+async def api_turn_order(
     game_id: int,
     body: TurnOrderUpdate,
     request: Request,
@@ -237,25 +413,28 @@ def api_turn_order(
 ):
     user = auth.get_current_user(request, db)
     game = services.set_turn_order(db, user.id, game_id, body.player_ids)
+    await _broadcast_game_state(game.id)
     return services.game_state(db, user.id, game.id)
 
 
 @app.post("/api/games/{game_id}/random-first")
-def api_random_first(game_id: int, request: Request, db: Session = Depends(get_db)):
+async def api_random_first(game_id: int, request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     game = services.random_first_player(db, user.id, game_id)
+    await _broadcast_game_state(game.id)
     return services.game_state(db, user.id, game.id)
 
 
 @app.post("/api/games/{game_id}/begin")
-def api_begin(game_id: int, request: Request, db: Session = Depends(get_db)):
+async def api_begin(game_id: int, request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     game = services.begin_game(db, user.id, game_id)
+    await _broadcast_game_state(game.id)
     return services.game_state(db, user.id, game.id)
 
 
 @app.post("/api/games/{game_id}/turns")
-def api_record_turn(
+async def api_record_turn(
     game_id: int,
     body: TurnRecord,
     request: Request,
@@ -271,25 +450,28 @@ def api_record_turn(
         play_type=body.play_type,
         timer_elapsed_sec=body.timer_elapsed_sec,
     )
+    await _broadcast_game_state(game_id)
     return services.game_state(db, user.id, game_id)
 
 
 @app.post("/api/games/{game_id}/next-player")
-def api_next_player(game_id: int, request: Request, db: Session = Depends(get_db)):
+async def api_next_player(game_id: int, request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     services.advance_turn(db, user.id, game_id)
+    await _broadcast_game_state(game_id)
     return services.game_state(db, user.id, game_id)
 
 
 @app.post("/api/games/{game_id}/end")
-def api_end_game(game_id: int, request: Request, db: Session = Depends(get_db)):
+async def api_end_game(game_id: int, request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     services.end_game(db, user.id, game_id)
+    await _broadcast_game_state(game_id)
     return services.game_state(db, user.id, game_id)
 
 
 @app.post("/api/games/{game_id}/finalize")
-def api_finalize(
+async def api_finalize(
     game_id: int,
     body: FinalizeGame,
     request: Request,
@@ -297,6 +479,7 @@ def api_finalize(
 ):
     user = auth.get_current_user(request, db)
     services.finalize_game(db, user.id, game_id, body.rack_adjustments)
+    await _broadcast_game_state(game_id)
     return services.game_detail(db, user.id, game_id)
 
 
@@ -338,9 +521,45 @@ def api_list_games(
 
 
 @app.get("/api/leaderboard")
-def api_leaderboard(request: Request, db: Session = Depends(get_db)):
+def api_leaderboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    scope: str = Query(default="all"),
+):
+    if scope not in ("all", "friends", "manual"):
+        raise HTTPException(status_code=400, detail="Invalid scope")
     user = auth.get_current_user(request, db)
-    return stats.all_stats(db, user.id)
+    return stats.all_stats(db, user.id, scope)  # type: ignore[arg-type]
+
+
+@app.websocket("/api/games/{game_id}/watch")
+async def ws_game_watch(websocket: WebSocket, game_id: int):
+    room = f"game:{game_id}"
+    db = SessionLocal()
+    connected = False
+    try:
+        user = _ws_current_user(websocket, db)
+        game, role = services.get_game_access(db, user.id, game_id)
+        state = services._build_game_state(game, role)
+        await game_connections.connect(room, websocket)
+        connected = True
+        await websocket.send_json(state)
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    except HTTPException as exc:
+        await websocket.close(code=4403 if exc.status_code == 403 else 4404)
+    except Exception:
+        logger.exception("websocket error for game %s", game_id)
+        if connected:
+            await websocket.close(code=1011)
+        else:
+            await websocket.close(code=1011)
+    finally:
+        if connected:
+            await game_connections.disconnect(room, websocket)
+        db.close()
 
 
 if STATIC_DIR.exists():

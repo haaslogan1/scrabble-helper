@@ -40,3 +40,28 @@ def test_leaderboard(client):
         "games_played",
     }
     assert set(board.json().keys()) == keys
+
+
+@pytest.mark.integration
+def test_leaderboard_scope_filters(auth_client):
+    manual_ids = []
+    for name in ("ManualA", "ManualB"):
+        manual_ids.append(auth_client.post("/api/players", json={"name": name}).json()["id"])
+
+    game_id = auth_client.post("/api/games", json={}).json()["id"]
+    auth_client.put(f"/api/games/{game_id}/players", json={"player_ids": manual_ids})
+    auth_client.post(f"/api/games/{game_id}/begin")
+    auth_client.post(f"/api/games/{game_id}/turns", json={"points": 10, "play_type": "score"})
+    auth_client.post(f"/api/games/{game_id}/turns", json={"points": 20, "play_type": "score"})
+    auth_client.post(f"/api/games/{game_id}/end")
+    auth_client.post(f"/api/games/{game_id}/finalize", json={"rack_adjustments": {}})
+
+    all_board = auth_client.get("/api/leaderboard", params={"scope": "all"}).json()
+    manual_board = auth_client.get("/api/leaderboard", params={"scope": "manual"}).json()
+    friends_board = auth_client.get("/api/leaderboard", params={"scope": "friends"}).json()
+
+    all_names = {r["player"] for r in all_board["games_played"]}
+    manual_names = {r["player"] for r in manual_board["games_played"]}
+    assert "ManualA" in all_names
+    assert manual_names == {"ManualA", "ManualB"}
+    assert friends_board["games_played"] == []

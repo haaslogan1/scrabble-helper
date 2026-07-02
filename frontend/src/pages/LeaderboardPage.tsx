@@ -10,14 +10,29 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import { getLeaderboard, type Leaderboard } from "../api";
+import { getLeaderboard, type Leaderboard, type LeaderboardScope } from "../api";
 import { getChartPalette, useTheme } from "../theme/ThemeContext";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+const SCOPES: { value: LeaderboardScope; label: string }[] = [
+  { value: "all", label: "All players" },
+  { value: "friends", label: "Friends" },
+  { value: "manual", label: "Manual only" },
+];
+
 function ChartCard({ title, labels, values, label }: { title: string; labels: string[]; values: number[]; label: string }) {
   const { resolvedTheme } = useTheme();
   const palette = getChartPalette();
+
+  if (labels.length === 0) {
+    return (
+      <div className="card chart-card">
+        <h3>{title}</h3>
+        <p className="muted">No data for this filter.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="card chart-card">
@@ -44,11 +59,12 @@ function ChartCard({ title, labels, values, label }: { title: string; labels: st
 }
 
 export default function LeaderboardPage() {
+  const [scope, setScope] = useState<LeaderboardScope>("all");
   const [stats, setStats] = useState<Leaderboard | null>(null);
 
   useEffect(() => {
-    getLeaderboard().then(setStats).catch(() => {});
-  }, []);
+    getLeaderboard(scope).then(setStats).catch(() => {});
+  }, [scope]);
 
   if (!stats) return <p className="loading-state">Loading...</p>;
 
@@ -61,6 +77,18 @@ export default function LeaderboardPage() {
       <div className="card">
         <h1 className="page-title">Scrabble Leaderboard</h1>
         <Link to="/" className="back-link muted">← Home</Link>
+        <div className="segmented" role="tablist" aria-label="Leaderboard scope">
+          {SCOPES.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              className={`segmented__btn${scope === s.value ? " segmented__btn--active" : ""}`}
+              onClick={() => setScope(s.value)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="grid-2">
         <ChartCard title="Wins" labels={wins.map((r) => r.player)} values={wins.map((r) => r.wins)} label="Wins" />

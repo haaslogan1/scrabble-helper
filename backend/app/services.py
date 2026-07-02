@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
+from app import friends as friends_service
 from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round
 from app.scoring import PlayerScore, assign_placements, validate_turn_points
 
@@ -56,6 +57,45 @@ def get_owned_game(db: Session, user_id: int, game_id: int) -> Game:
     return game
 
 
+def _load_game(db: Session, game_id: int) -> Game | None:
+    return (
+        db.query(Game)
+        .options(joinedload(Game.game_players).joinedload(GamePlayer.player))
+        .filter(Game.id == game_id)
+        .one_or_none()
+    )
+
+
+def get_game_access(
+    db: Session, user_id: int, game_id: int
+) -> tuple[Game, Literal["owner", "spectator"]]:
+    game = _load_game(db, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if game.owner_user_id == user_id:
+        return game, "owner"
+
+    linked_participant = any(
+        gp.player.linked_user_id == user_id for gp in game.game_players
+    )
+    if not linked_participant:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    if game.status in (GameStatus.active, GameStatus.ending):
+        if not friends_service.are_mutual_friends(db, user_id, game.owner_user_id):
+            raise HTTPException(status_code=403, detail="Not allowed to view this game")
+        return game, "spectator"
+
+    return game, "spectator"
+
+
+def require_game_owner(db: Session, user_id: int, game_id: int) -> Game:
+    game, role = get_game_access(db, user_id, game_id)
+    if role != "owner":
+        raise HTTPException(status_code=403, detail="Only the game owner can do this")
+    return game
+
+
 def create_game(db: Session, user_id: int, settings: dict[str, Any] | None = None) -> Game:
     merged = {**DEFAULT_SETTINGS, **(settings or {})}
     game = Game(owner_user_id=user_id, settings=merged, status=GameStatus.draft)
@@ -79,6 +119,10 @@ def set_game_players(db: Session, user_id: int, game_id: int, player_ids: list[i
     )
     if len(players) != len(player_ids):
         raise HTTPException(status_code=400, detail="Invalid player selection")
+
+    friends_service.validate_linked_players_for_live(
+        db, user_id, players, exclude_game_id=game.id
+    )
 
     db.query(GamePlayer).filter(GamePlayer.game_id == game.id).delete()
     for idx, player_id in enumerate(player_ids):
@@ -128,6 +172,17 @@ def begin_game(db: Session, user_id: int, game_id: int) -> Game:
         raise HTTPException(status_code=400, detail="Game is not in draft status")
     if len(game.game_players) < 2:
         raise HTTPException(status_code=400, detail="At least two players required")
+    players = []
+    for gp in game.game_players:
+        if gp.player is None:
+            raise HTTPException(
+                status_code=400,
+                detail="A player on this game is no longer on your roster.",
+            )
+        players.append(gp.player)
+    friends_service.validate_linked_players_for_live(
+        db, user_id, players, exclude_game_id=game.id
+    )
     game.status = GameStatus.active
     game.started_at = datetime.utcnow()
     game.played_date = date.today()
@@ -135,6 +190,8 @@ def begin_game(db: Session, user_id: int, game_id: int) -> Game:
     game.current_turn_index = 0
     db.commit()
     db.refresh(game)
+    game = get_owned_game(db, user_id, game.id)
+    friends_service.notify_live_game_started(db, game)
     return game
 
 
@@ -170,7 +227,7 @@ def record_turn(
     play_type: str = "score",
     timer_elapsed_sec: int | None = None,
 ) -> Game:
-    game = get_owned_game(db, user_id, game_id)
+    game = require_game_owner(db, user_id, game_id)
     if game.status != GameStatus.active:
         raise HTTPException(status_code=400, detail="Game is not active")
 
@@ -221,7 +278,7 @@ def record_turn(
 
 
 def advance_turn(db: Session, user_id: int, game_id: int) -> Game:
-    game = get_owned_game(db, user_id, game_id)
+    game = require_game_owner(db, user_id, game_id)
     if game.status != GameStatus.active:
         raise HTTPException(status_code=400, detail="Game is not active")
 
@@ -233,7 +290,7 @@ def advance_turn(db: Session, user_id: int, game_id: int) -> Game:
 
 
 def end_game(db: Session, user_id: int, game_id: int) -> Game:
-    game = get_owned_game(db, user_id, game_id)
+    game = require_game_owner(db, user_id, game_id)
     if game.status != GameStatus.active:
         raise HTTPException(status_code=400, detail="Game is not active")
     game.status = GameStatus.ending
@@ -248,7 +305,7 @@ def finalize_game(
     game_id: int,
     rack_adjustments: dict[str, float],
 ) -> Game:
-    game = get_owned_game(db, user_id, game_id)
+    game = require_game_owner(db, user_id, game_id)
     if game.status != GameStatus.ending:
         raise HTTPException(status_code=400, detail="Game is not in ending status")
 
@@ -282,6 +339,8 @@ def finalize_game(
     game.completed_at = datetime.utcnow()
     db.commit()
     db.refresh(game)
+    game = get_owned_game(db, user_id, game.id)
+    friends_service.notify_game_completed(db, game)
     return game
 
 
@@ -294,8 +353,7 @@ def list_games(
     return query.order_by(Game.completed_at.desc().nullslast(), Game.id.desc()).all()
 
 
-def game_state(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
-    game = get_owned_game(db, user_id, game_id)
+def _build_game_state(game: Game, role: str) -> dict[str, Any]:
     ordered = _ordered_players(game)
     show_board = game.settings.get("show_live_leaderboard", True)
 
@@ -316,6 +374,7 @@ def game_state(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
     return {
         "id": game.id,
         "status": game.status.value,
+        "role": role,
         "settings": game.settings,
         "current_round": game.current_round,
         "current_turn_index": game.current_turn_index,
@@ -327,8 +386,20 @@ def game_state(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
     }
 
 
+def game_state(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
+    game, role = get_game_access(db, user_id, game_id)
+    return _build_game_state(game, role)
+
+
+def game_state_broadcast(db: Session, game_id: int) -> dict[str, Any]:
+    game = _load_game(db, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return _build_game_state(game, "owner")
+
+
 def game_detail(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
-    game = get_owned_game(db, user_id, game_id)
+    game, role = get_game_access(db, user_id, game_id)
     ordered = _ordered_players(game)
     winner = next((gp for gp in ordered if gp.won), None)
     rounds = (
@@ -338,7 +409,7 @@ def game_detail(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
         .all()
     )
     return {
-        **game_state(db, user_id, game_id),
+        **_build_game_state(game, role),
         "winner": winner.player.name if winner else None,
         "players": [
             {

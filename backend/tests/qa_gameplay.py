@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 DEFAULT_PASSWORD = "QaTestPass1"
@@ -30,12 +32,95 @@ def register_basic_user(
     return res.json()
 
 
+def register_user_with_username(
+    client: TestClient,
+    *,
+    email: str,
+    username: str,
+    name: str | None = None,
+    password: str = DEFAULT_PASSWORD,
+) -> dict:
+    user = register_basic_user(
+        client, email=email, password=password, name=name or username.title()
+    )
+    res = client.patch("/api/me", json={"username": username})
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
 def login_basic_user(
     client: TestClient, *, email: str, password: str = DEFAULT_PASSWORD
 ) -> dict:
     res = client.post("/auth/login", json={"email": email, "password": password})
     assert res.status_code == 200, res.text
     return res.json()
+
+
+def make_basic_client(monkeypatch) -> TestClient:
+    from app.config import settings
+    from app.main import app
+
+    monkeypatch.setattr(settings, "dev_auth_bypass", False)
+    monkeypatch.setattr(settings, "local_auth_enabled", True)
+    monkeypatch.setattr(settings, "email_verification_enabled", True)
+    monkeypatch.setattr(settings, "email_verification_dev_expose_code", True)
+    return TestClient(app)
+
+
+def fresh_basic_client(monkeypatch, *, email: str | None = None, username: str | None = None, name: str | None = None):
+    client = make_basic_client(monkeypatch)
+    email = email or f"user-{uuid.uuid4().hex[:8]}@test.local"
+    display_name = name or (username.title() if username else "QA User")
+    if username:
+        return client, register_user_with_username(
+            client, email=email, username=username, name=display_name
+        )
+    return client, register_basic_user(client, email=email, name=display_name)
+
+
+def add_friend(client: TestClient, *, user_id: int | None = None, username: str | None = None) -> dict:
+    body: dict = {}
+    if user_id is not None:
+        body["user_id"] = user_id
+    if username is not None:
+        body["username"] = username
+    res = client.post("/api/friends", json=body)
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def accept_friend_request(client: TestClient, request_id: int) -> dict:
+    res = client.post(f"/api/friends/requests/{request_id}/accept")
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def add_mutual_friends(
+    from_client: TestClient,
+    to_client: TestClient,
+    *,
+    to_user_id: int,
+) -> None:
+    result = add_friend(from_client, user_id=to_user_id)
+    if result.get("mutual"):
+        return
+    incoming = to_client.get("/api/friends/requests/incoming")
+    assert incoming.status_code == 200, incoming.text
+    requests = incoming.json()
+    assert requests, "expected incoming friend request"
+    accept_friend_request(to_client, requests[0]["id"])
+
+
+def begin_game_with_player_ids(client: TestClient, game_id: int, player_ids: list[int]) -> dict:
+    attach = client.put(f"/api/games/{game_id}/players", json={"player_ids": player_ids})
+    assert attach.status_code == 200, attach.text
+    begin = client.post(f"/api/games/{game_id}/begin")
+    assert begin.status_code == 200, begin.text
+    return begin.json()
+
+
+def connect_game_watch_ws(client: TestClient, game_id: int):
+    return client.websocket_connect(f"/api/games/{game_id}/watch")
 
 
 def create_roster(client: TestClient, names: list[str]) -> list[int]:

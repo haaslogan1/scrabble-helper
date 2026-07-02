@@ -12,8 +12,63 @@ class PlayerCreate(BaseModel):
 class PlayerOut(BaseModel):
     id: int
     name: str
+    linked_user_id: int | None = None
+    is_friend: bool = False
+    mutual: bool | None = None
 
     model_config = {"from_attributes": True}
+
+
+class FriendOut(BaseModel):
+    id: int
+    username: str | None
+    name: str
+    mutual: bool
+
+
+class FriendSendOut(BaseModel):
+    id: int
+    username: str | None
+    name: str
+    request_id: int | None = None
+    status: str
+    mutual: bool | None = None
+
+
+class FriendRequestOut(BaseModel):
+    id: int
+    from_user: UserSearchOut
+    created_at: str
+
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    title: str
+    body: str
+    payload: dict[str, Any]
+    read: bool
+    created_at: str
+
+
+class NotificationListOut(BaseModel):
+    notifications: list[NotificationOut]
+    unread_count: int
+
+
+class FriendAdd(BaseModel):
+    user_id: int | None = None
+    username: str | None = None
+
+
+class UserSearchOut(BaseModel):
+    id: int
+    username: str | None
+    name: str
+
+
+class UsernameUpdate(BaseModel):
+    username: str
 
 
 class GameSettings(BaseModel):
@@ -49,6 +104,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     name: str
+    username: str | None = None
     is_admin: bool = False
 
     model_config = {"from_attributes": True}
