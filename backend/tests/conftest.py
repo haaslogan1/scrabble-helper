@@ -58,6 +58,8 @@ def _reset_schema() -> None:
             conn.execute(text("DROP SCHEMA public CASCADE"))
             conn.execute(text("CREATE SCHEMA public"))
             conn.commit()
+        engine.dispose()
+        _debug_log("H-B", "postgresql engine pool disposed after schema reset")
     else:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
