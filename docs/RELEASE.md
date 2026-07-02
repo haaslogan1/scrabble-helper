@@ -7,9 +7,11 @@
 3. Push the branch (see push window below)
 4. Open a PR targeting `main`: `gh pr create`
 5. Wait for **CI** (`.github/workflows/ci.yml`) to pass on the PR
-6. Self-approve and merge: `gh pr review --approve` then `gh pr merge`
+6. Merge when CI is green: `gh pr merge --merge --delete-branch`
 
-**GitHub settings:** Branch protection on `main` should require the CI status check. Allow the PR author to approve their own PR.
+**Solo repo note:** GitHub does not allow `gh pr review --approve` on your own PR (API error: *Review Can not approve your own pull request*). That is normal. You do not need an approval review to merge unless branch protection requires a reviewer other than you. For this repo, **CI passing on the PR is the gate** — then merge.
+
+**GitHub settings (optional):** On `main`, branch protection can require the **ci / test** status check. Do **not** require approving reviews if you are the only contributor (you cannot approve your own PR).
 
 ## Deploy flow (automatic prod)
 
