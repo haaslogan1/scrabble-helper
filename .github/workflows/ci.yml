@@ -52,7 +52,15 @@ jobs:
             case "$f" in
               tests/test_local_auth.py|tests/test_gameplay_qa.py) continue ;;
             esac
-            if ! pytest "$f" -q --cov=app --cov-append --cov-report=term-missing; then
+            if [ "$f" = "tests/test_friends_gameplay.py" ]; then
+              mapfile -t cases < <(pytest "$f" --collect-only -q | grep '::')
+              for t in "${cases[@]}"; do
+                if ! pytest "$t" -q --cov=app --cov-append --cov-report=term-missing; then
+                  echo "::error file=$t::pytest failed in $t"
+                  exit 1
+                fi
+              done
+            elif ! pytest "$f" -q --cov=app --cov-append --cov-report=term-missing; then
               echo "::error file=$f::pytest failed in $f"
               exit 1
             fi
