@@ -1,6 +1,7 @@
 import pytest
 
 from app.scoring import MAX_TURN_POINTS, validate_turn_points
+from tests.qa_gameplay import abandon_in_progress_games
 
 
 @pytest.mark.unit
@@ -41,6 +42,7 @@ def test_max_turn_points_constant():
 
 @pytest.mark.integration
 def test_invalid_points_do_not_advance_turn(client):
+    abandon_in_progress_games(client)
     ids = []
     for name in ("P1", "P2"):
         ids.append(client.post("/api/players", json={"name": name}).json()["id"])
@@ -56,20 +58,23 @@ def test_invalid_points_do_not_advance_turn(client):
     assert "at least 1" in invalid.json()["detail"].lower()
 
     state = client.get(f"/api/games/{game_id}/state").json()
-    assert state["current_player"] == "P1"
-    assert state["standings"][0]["total_score"] == 0.0
+    assert state["current_player"] == "Dev User"
+    scores = {s["name"]: s["total_score"] for s in state["standings"]}
+    assert scores["Dev User"] == 0.0
 
     over = client.post(
         f"/api/games/{game_id}/turns",
         json={"points": MAX_TURN_POINTS + 1, "play_type": "score"},
     )
     assert over.status_code == 400
-    assert state["current_player"] == "P1"
+    state = client.get(f"/api/games/{game_id}/state").json()
+    assert state["current_player"] == "Dev User"
 
     valid = client.post(
         f"/api/games/{game_id}/turns",
         json={"points": 15, "play_type": "score"},
     )
     assert valid.status_code == 200
-    assert valid.json()["current_player"] == "P2"
-    assert valid.json()["standings"][0]["total_score"] == 15
+    assert valid.json()["current_player"] == "P1"
+    scores = {s["name"]: s["total_score"] for s in valid.json()["standings"]}
+    assert scores["Dev User"] == 15

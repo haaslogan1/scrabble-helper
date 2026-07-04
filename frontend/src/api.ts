@@ -11,6 +11,7 @@ export type Player = {
   linked_user_id?: number | null;
   is_friend?: boolean;
   mutual?: boolean | null;
+  is_self?: boolean;
 };
 export type Friend = {
   id: number;

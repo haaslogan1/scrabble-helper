@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app import friends as friends_service
-from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round
+from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round, User
 from app.scoring import PlayerScore, assign_placements, validate_turn_points
 
 
@@ -96,6 +96,26 @@ def require_game_owner(db: Session, user_id: int, game_id: int) -> Game:
     return game
 
 
+def ensure_owner_player(db: Session, user: User) -> Player:
+    """Player representing the game owner (linked to their account)."""
+    existing = (
+        db.query(Player)
+        .filter(Player.owner_user_id == user.id, Player.linked_user_id == user.id)
+        .one_or_none()
+    )
+    if existing:
+        return existing
+    player = Player(
+        owner_user_id=user.id,
+        name=user.name or user.username or "Me",
+        linked_user_id=user.id,
+    )
+    db.add(player)
+    db.commit()
+    db.refresh(player)
+    return player
+
+
 def create_game(db: Session, user_id: int, settings: dict[str, Any] | None = None) -> Game:
     merged = {**DEFAULT_SETTINGS, **(settings or {})}
     game = Game(owner_user_id=user_id, settings=merged, status=GameStatus.draft)
@@ -109,6 +129,14 @@ def set_game_players(db: Session, user_id: int, game_id: int, player_ids: list[i
     game = get_owned_game(db, user_id, game_id)
     if game.status != GameStatus.draft:
         raise HTTPException(status_code=400, detail="Game is not in draft status")
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    owner_player = ensure_owner_player(db, user)
+    if owner_player.id not in player_ids:
+        player_ids = [owner_player.id] + [pid for pid in player_ids if pid != owner_player.id]
+
     if len(player_ids) < 2:
         raise HTTPException(status_code=400, detail="At least two players required")
 

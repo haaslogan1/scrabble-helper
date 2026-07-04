@@ -112,6 +112,7 @@ def add_mutual_friends(
 
 
 def begin_game_with_player_ids(client: TestClient, game_id: int, player_ids: list[int]) -> dict:
+    abandon_in_progress_games(client)
     attach = client.put(f"/api/games/{game_id}/players", json={"player_ids": player_ids})
     assert attach.status_code == 200, attach.text
     begin = client.post(f"/api/games/{game_id}/begin")
@@ -138,6 +139,7 @@ def setup_and_begin_game(
     *,
     settings: dict | None = None,
 ) -> int:
+    abandon_in_progress_games(client)
     ids = create_roster(client, player_names)
     body: dict = {}
     if settings:
@@ -160,13 +162,44 @@ def play_turn(client: TestClient, game_id: int, points: int) -> dict:
     return res
 
 
+def abandon_in_progress_games(client: TestClient) -> None:
+    """Finish active games so the owner's linked player can join a new live game."""
+    for status in ("active", "ending"):
+        listing = client.get("/api/games", params={"status": status})
+        if listing.status_code != 200:
+            continue
+        for summary in listing.json():
+            gid = summary["id"]
+            state = client.get(f"/api/games/{gid}/state").json()
+            client.post(f"/api/games/{gid}/end")
+            racks = {str(s["player_id"]): 0 for s in state["standings"]}
+            client.post(
+                f"/api/games/{gid}/finalize",
+                json={"rack_adjustments": racks},
+            )
+
+
+def roster_player_ids(state_or_attach: dict) -> list[int]:
+    return [s["player_id"] for s in state_or_attach["standings"]]
+
+
+def attach_opponents(client: TestClient, game_id: int, opponent_ids: list[int]) -> dict:
+    """Attach opponents; the game owner is auto-included by the backend."""
+    res = client.put(f"/api/games/{game_id}/players", json={"player_ids": opponent_ids})
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
 def play_full_game(
     client: TestClient,
     game_id: int,
-    player_count: int,
-    rounds: int,
+    player_count: int | None = None,
+    rounds: int = 1,
     score_fn=None,
 ) -> None:
+    if player_count is None:
+        state = client.get(f"/api/games/{game_id}/state").json()
+        player_count = len(state["standings"])
     if score_fn is None:
         score_fn = lambda r, p: 10 + r + p
     for round_num in range(1, rounds + 1):
