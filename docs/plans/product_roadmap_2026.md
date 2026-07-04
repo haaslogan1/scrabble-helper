@@ -16,10 +16,10 @@ todos:
     status: pending
   - id: phase2-rules
     content: "Phase 2 PR1: /game/rules + GameReferenceLayout + frontend tests"
-    status: pending
+    status: completed
   - id: phase2-dictionary
     content: "Phase 2 PR2: ENABLE local list + /game/dictionary exact-word challenge lookup + backend tests"
-    status: pending
+    status: completed
   - id: phase2-word-tracking
     content: "Phase 2 PR3 (future): input_mode word tracking on turn submit"
     status: pending
@@ -44,8 +44,9 @@ isProject: false
 
 - **Stack:** Monolithic FastAPI + React SPA in one Docker image on [Fly.io](https://scrabble-helper.fly.dev); Postgres in prod (SQLite volume fallback in [`fly.toml`](../../dev/scrabble-helper/fly.toml)).
 - **Deploy:** Manual `fly deploy`; CI in [`.github/workflows/ci.yml`](../../dev/scrabble-helper/.github/workflows/ci.yml) runs tests only — no staging, no canary.
-- **Routes:** All authenticated except `/login`. Live play at `/game/:id/play`; recap at `/games/:id`.
-- **Existing hooks:** SMTP via [`email_send.py`](../../dev/scrabble-helper/backend/app/email_send.py); `Round.word` + `input_mode` in game settings (unused in UI).
+- **Routes:** All authenticated except `/login`. Live play at `/game/:id/play`; recap at `/games/:id`. Reference pages: `/game/rules`, `/game/dictionary` (back to play via `?gameId=`).
+- **Dictionary:** Local ENABLE list; `GET /api/dictionary/check/{word}`; challenge-only exact-word lookup.
+- **Existing hooks:** SMTP via [`email_send.py`](../../dev/scrabble-helper/backend/app/email_send.py); `Round.word` + `input_mode` in game settings (word tracking UI still pending).
 
 ---
 
