@@ -907,3 +907,31 @@ tbody tr:hover {
   color: var(--ok, #080);
   margin: 0;
 }
+
+.game-ref-page__sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-bottom: 0.75rem;
+  background: var(--bg);
+}
+
+.play-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.rules-section {
+  margin-bottom: 1.25rem;
+}
+
+.rules-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.rules-section p {
+  margin: 0 0 0.5rem;
+}
