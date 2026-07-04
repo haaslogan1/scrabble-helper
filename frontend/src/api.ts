@@ -73,6 +73,8 @@ export type GameState = {
   standings: Standing[];
   played_date?: string | null;
   completed_at?: string | null;
+  last_activity_at?: string | null;
+  inactivity_warning?: boolean;
   winner?: string | null;
   players?: Array<{
     player_id: number;
@@ -220,6 +222,8 @@ export const nextPlayer = (gameId: number) =>
   api<GameState>(`/api/games/${gameId}/next-player`, { method: "POST" });
 export const endGame = (gameId: number) =>
   api<GameState>(`/api/games/${gameId}/end`, { method: "POST" });
+export const ackInactivity = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/ack-inactivity`, { method: "POST" });
 export const finalizeGame = (gameId: number, rack_adjustments: Record<string, number>) =>
   api<GameState>(`/api/games/${gameId}/finalize`, { method: "POST", body: JSON.stringify({ rack_adjustments }) });
 export const getGameState = (gameId: number) => api<GameState>(`/api/games/${gameId}/state`);
