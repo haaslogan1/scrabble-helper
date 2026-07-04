@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import GameReferenceLayout from "./GameReferenceLayout";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("GameReferenceLayout", () => {
   it("renders children and back link from gameId query", () => {

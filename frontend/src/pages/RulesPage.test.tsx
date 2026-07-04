@@ -1,9 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { SCRABBLE_RULES } from "../content/rulesContent";
 import RulesPage from "./RulesPage";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("RulesPage", () => {
   it("renders every section title", () => {

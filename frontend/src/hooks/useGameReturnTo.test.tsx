@@ -1,8 +1,12 @@
-import { renderHook } from "@testing-library/react";
+import { cleanup, renderHook } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { useGameReturnTo } from "./useGameReturnTo";
+
+afterEach(() => {
+  cleanup();
+});
 
 function renderReturnTo(initialEntries: Parameters<typeof MemoryRouter>[0]["initialEntries"]) {
   return renderHook(() => useGameReturnTo(), {
