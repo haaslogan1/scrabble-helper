@@ -820,3 +820,90 @@ tbody tr:hover {
 .banner--info {
   border-left: 4px solid var(--accent);
 }
+
+.feedback-fab {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 100;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.feedback-fab--play {
+  bottom: 5rem;
+}
+
+.feedback-fab:hover {
+  border-color: var(--accent);
+}
+
+.feedback-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.feedback-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  padding: 1.25rem;
+  width: min(100%, 28rem);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.feedback-modal h2 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.feedback-field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.feedback-field select,
+.feedback-field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.feedback-char-count {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted, #666);
+  text-align: right;
+}
+
+.feedback-char-count--limit {
+  color: var(--warn, #c60);
+  font-weight: 600;
+}
+
+.feedback-success {
+  color: var(--ok, #080);
+  margin: 0;
+}
