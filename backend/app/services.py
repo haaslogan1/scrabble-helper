@@ -17,6 +17,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "show_live_leaderboard": True,
 }
 
+INACTIVITY_WARN_AFTER_SEC = 15 * 60
+INACTIVITY_END_AFTER_SEC = 30 * 60
+
 
 def list_players(db: Session, user_id: int) -> list[Player]:
     return (
@@ -213,6 +216,7 @@ def begin_game(db: Session, user_id: int, game_id: int) -> Game:
     )
     game.status = GameStatus.active
     game.started_at = datetime.utcnow()
+    game.last_activity_at = datetime.utcnow()
     game.played_date = date.today()
     game.current_round = 1
     game.current_turn_index = 0
@@ -300,6 +304,7 @@ def record_turn(
         )
     _recompute_totals(db, game)
     _advance_turn_inplace(game, ordered)
+    game.last_activity_at = datetime.utcnow()
     db.commit()
     db.refresh(game)
     return game
@@ -327,16 +332,23 @@ def end_game(db: Session, user_id: int, game_id: int) -> Game:
     return game
 
 
-def finalize_game(
-    db: Session,
-    user_id: int,
-    game_id: int,
-    rack_adjustments: dict[str, float],
-) -> Game:
+def ack_inactivity(db: Session, user_id: int, game_id: int) -> Game:
     game = require_game_owner(db, user_id, game_id)
-    if game.status != GameStatus.ending:
-        raise HTTPException(status_code=400, detail="Game is not in ending status")
+    if game.status != GameStatus.active:
+        raise HTTPException(status_code=400, detail="Game is not active")
+    game.last_activity_at = datetime.utcnow()
+    db.commit()
+    db.refresh(game)
+    return game
 
+
+def _idle_seconds(game: Game) -> float:
+    if not game.last_activity_at:
+        return 0.0
+    return (datetime.utcnow() - game.last_activity_at).total_seconds()
+
+
+def _apply_finalize(db: Session, game: Game, rack_adjustments: dict) -> Game:
     for gp in game.game_players:
         adj = rack_adjustments.get(gp.player_id)
         if adj is None:
@@ -367,9 +379,33 @@ def finalize_game(
     game.completed_at = datetime.utcnow()
     db.commit()
     db.refresh(game)
-    game = get_owned_game(db, user_id, game.id)
     friends_service.notify_game_completed(db, game)
     return game
+
+
+def auto_finish_inactive_game(db: Session, game: Game) -> bool:
+    if game.status != GameStatus.active or not game.last_activity_at:
+        return False
+    if _idle_seconds(game) < INACTIVITY_END_AFTER_SEC:
+        return False
+    game.status = GameStatus.ending
+    racks = {gp.player_id: 0.0 for gp in game.game_players}
+    _apply_finalize(db, game, racks)
+    return True
+
+
+def finalize_game(
+    db: Session,
+    user_id: int,
+    game_id: int,
+    rack_adjustments: dict[str, float],
+) -> Game:
+    game = require_game_owner(db, user_id, game_id)
+    if game.status != GameStatus.ending:
+        raise HTTPException(status_code=400, detail="Game is not in ending status")
+
+    game = _apply_finalize(db, game, rack_adjustments)
+    return get_owned_game(db, user_id, game.id)
 
 
 def list_games(
@@ -399,6 +435,14 @@ def _build_game_state(game: Game, role: str) -> dict[str, Any]:
     if game.status == GameStatus.active and ordered:
         current_player = ordered[game.current_turn_index].player.name
 
+    idle = _idle_seconds(game)
+    inactivity_warning = (
+        game.status == GameStatus.active
+        and game.last_activity_at is not None
+        and idle >= INACTIVITY_WARN_AFTER_SEC
+        and idle < INACTIVITY_END_AFTER_SEC
+    )
+
     return {
         "id": game.id,
         "status": game.status.value,
@@ -409,25 +453,39 @@ def _build_game_state(game: Game, role: str) -> dict[str, Any]:
         "current_player": current_player,
         "standings": standings,
         "started_at": game.started_at.isoformat() if game.started_at else None,
+        "last_activity_at": game.last_activity_at.isoformat() if game.last_activity_at else None,
+        "inactivity_warning": inactivity_warning,
         "completed_at": game.completed_at.isoformat() if game.completed_at else None,
         "played_date": game.played_date.isoformat() if game.played_date else None,
     }
 
 
+def _game_state_with_inactivity(db: Session, game: Game, role: str) -> dict[str, Any]:
+    if auto_finish_inactive_game(db, game):
+        refreshed = _load_game(db, game.id)
+        if refreshed is not None:
+            game = refreshed
+    return _build_game_state(game, role)
+
+
 def game_state(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
     game, role = get_game_access(db, user_id, game_id)
-    return _build_game_state(game, role)
+    return _game_state_with_inactivity(db, game, role)
 
 
 def game_state_broadcast(db: Session, game_id: int) -> dict[str, Any]:
     game = _load_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
-    return _build_game_state(game, "owner")
+    return _game_state_with_inactivity(db, game, "owner")
 
 
 def game_detail(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
     game, role = get_game_access(db, user_id, game_id)
+    if auto_finish_inactive_game(db, game):
+        refreshed = _load_game(db, game_id)
+        if refreshed is not None:
+            game = refreshed
     ordered = _ordered_players(game)
     winner = next((gp for gp in ordered if gp.won), None)
     rounds = (

@@ -512,6 +512,14 @@ async def api_end_game(game_id: int, request: Request, db: Session = Depends(get
     return services.game_state(db, user.id, game_id)
 
 
+@app.post("/api/games/{game_id}/ack-inactivity")
+async def api_ack_inactivity(game_id: int, request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    services.ack_inactivity(db, user.id, game_id)
+    await _broadcast_game_state(game_id)
+    return services.game_state(db, user.id, game_id)
+
+
 @app.post("/api/games/{game_id}/finalize")
 async def api_finalize(
     game_id: int,
