@@ -11,10 +11,15 @@ export default function GamePlayersPage() {
   const [newName, setNewName] = useState("");
   const [error, setError] = useState("");
 
+  const selfPlayer = players.find((p) => p.is_self);
+  const opponents = players.filter((p) => !p.is_self);
+
   useEffect(() => {
     listPlayers().then((list) => {
       setPlayersList(list);
-      setSelected(list.filter((p) => p.is_friend).map((p) => p.id));
+      setSelected(
+        list.filter((p) => p.is_friend && !p.is_self).map((p) => p.id),
+      );
     }).catch(() => {});
   }, []);
 
@@ -43,8 +48,13 @@ export default function GamePlayersPage() {
   return (
     <div className="card">
       <h1 className="page-title">Select players</h1>
-      <p className="muted">Choose saved players or add new ones. Friends are pre-selected.</p>
-      {players.map((p) => (
+      <p className="muted">You are always playing. Choose opponents or add new ones. Friends are pre-selected.</p>
+      {selfPlayer && (
+        <p className="owner-player-row">
+          <strong>You ({selfPlayer.name})</strong> - always playing
+        </p>
+      )}
+      {opponents.map((p) => (
         <label key={p.id} className="checkbox-label">
           <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} />
           {p.name}
@@ -59,7 +69,7 @@ export default function GamePlayersPage() {
         <button type="button" className="btn secondary" onClick={addNew}>Add</button>
       </div>
       {error && <p className="error-text">{error}</p>}
-      <p><button className="btn" disabled={selected.length < 2} onClick={onContinue}>Next: Turn order</button></p>
+      <p><button className="btn" disabled={selected.length < 1} onClick={onContinue}>Next: Turn order</button></p>
     </div>
   );
 }

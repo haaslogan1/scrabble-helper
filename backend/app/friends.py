@@ -560,6 +560,7 @@ def player_out_extra(db: Session, owner_user_id: int, player: Player) -> dict[st
         "linked_user_id": player.linked_user_id,
         "is_friend": player.linked_user_id is not None,
         "mutual": None,
+        "is_self": player.linked_user_id == owner_user_id,
     }
     if player.linked_user_id is not None:
         data["mutual"] = are_mutual_friends(db, owner_user_id, player.linked_user_id)

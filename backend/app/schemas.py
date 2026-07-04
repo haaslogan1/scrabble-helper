@@ -15,6 +15,7 @@ class PlayerOut(BaseModel):
     linked_user_id: int | None = None
     is_friend: bool = False
     mutual: bool | None = None
+    is_self: bool = False
 
     model_config = {"from_attributes": True}
 

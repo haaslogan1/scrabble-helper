@@ -140,5 +140,4 @@ _Reported by QA agent. Review and assign to dev agent as needed._
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|
 | 2026-06-30 | Dev | Live play | No warning when a game runs 2.5+ hours | Start a game, leave it inactive (no turns) for 2.5+ hours; user should be warned the game is ending in 5 mins if they do not play a turn or acknowledge the error and press 'continue'. Currently, no prompt appears. |
-| 2026-07-02 | Dev | Game setup | Must select yourself as a player before starting a game | On the player selection screen, you have to add yourself as a player to start a game. This should not be an option — it should be assumed that you are always playing, and you should only need to add the other players. |
 | 2026-07-02 | Dev | Auth | Multiple concurrent sessions per user allowed | Log in as the same user from two devices at once (e.g. phone and laptop). Both sessions stay active. Expected: only one session per user is valid; logging in on a new device should show a warning like "Session exists on [mobile/computer]. That session has been logged off" and invalidate the previous session. |
