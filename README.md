@@ -47,6 +47,8 @@ pytest --cov=app
 
 Releases use **PRs → merge to `main` → automated staging + production deploy**. See [docs/RELEASE.md](docs/RELEASE.md) for the full workflow, smoke tests, and rollback.
 
+**Plans & mobile workflow:** [docs/plans/README.md](docs/plans/README.md) · [docs/MOBILE.md](docs/MOBILE.md)
+
 **One-time Fly setup:**
 
 ```powershell
