@@ -935,3 +935,31 @@ tbody tr:hover {
 .rules-section p {
   margin: 0 0 0.5rem;
 }
+
+.dictionary-callout {
+  margin-bottom: 1rem;
+}
+
+.dictionary-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dictionary-form label {
+  font-weight: 600;
+}
+
+.dictionary-result {
+  font-weight: 600;
+  margin: 0;
+}
+
+.dictionary-result--valid {
+  color: var(--ok, #080);
+}
+
+.dictionary-result--invalid {
+  color: var(--error, #c00);
+}

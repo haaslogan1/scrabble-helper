@@ -310,6 +310,20 @@ export default function GamePlayPage() {
 
         </Link>
 
+        <Link
+
+          to={`/game/dictionary?gameId=${gameId}`}
+
+          state={{ returnTo: `/game/${gameId}/play` }}
+
+          className="btn secondary btn--sm"
+
+        >
+
+          Check word
+
+        </Link>
+
       </div>
 
       {showInactivityModal && (
