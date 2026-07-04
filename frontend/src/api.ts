@@ -230,6 +230,27 @@ export const listGames = (status?: string) =>
 export const getLeaderboard = (scope: LeaderboardScope = "all") =>
   api<Leaderboard>(`/api/leaderboard?scope=${scope}`);
 
+export async function submitFeedback(body: {
+  message: string;
+  category?: "bug" | "idea" | "other";
+  page_url?: string;
+  game_id?: number;
+}): Promise<void> {
+  const res = await fetch("/api/feedback", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    throw new AuthError();
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(parseApiError(text) || res.statusText);
+  }
+}
+
 export function gameWatchUrl(gameId: number): string {
   const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${window.location.host}/api/games/${gameId}/watch`;

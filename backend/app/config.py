@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     smtp_use_tls: bool = True
+    feedback_to_email: str = ""
+    feedback_rate_limit_per_hour: int = 5
 
 
 settings = Settings()

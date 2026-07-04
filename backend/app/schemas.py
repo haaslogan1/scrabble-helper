@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -142,3 +142,25 @@ class HomeOut(BaseModel):
     completed_games: int
     in_progress_games: int
     saved_players: int
+
+
+class FeedbackCreate(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    category: Literal["bug", "idea", "other"] | None = None
+    page_url: str | None = Field(default=None, max_length=512)
+    game_id: int | None = None
+
+
+class FeedbackReviewUpdate(BaseModel):
+    reviewed: bool
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    user_email: str
+    category: str | None
+    message: str
+    page_url: str | None
+    game_id: int | None
+    reviewed: bool
+    created_at: str

@@ -8,14 +8,14 @@ from alembic import command
 from alembic.config import Config
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
-from app import auth, email_verification, friends, notifications, services, stats
+from app import auth, email_verification, feedback, friends, notifications, services, stats
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.email_send import smtp_configured
@@ -23,6 +23,9 @@ from app.models import GameStatus, User
 from app.realtime import game_connections
 from app.schemas import (
     FinalizeGame,
+    FeedbackCreate,
+    FeedbackOut,
+    FeedbackReviewUpdate,
     FriendAdd,
     FriendOut,
     FriendRequestOut,
@@ -366,6 +369,36 @@ def api_admin_delete_user_games_by_email(
 ):
     auth.require_admin(request, db)
     return {"deleted_count": admin_service.delete_all_games_for_email(db, email)}
+
+
+@app.get("/api/admin/feedback", response_model=list[FeedbackOut])
+def api_admin_list_feedback(
+    request: Request,
+    db: Session = Depends(get_db),
+    reviewed: bool | None = Query(default=None),
+):
+    auth.require_admin(request, db)
+    return admin_service.list_feedback(db, reviewed=reviewed)
+
+
+@app.patch("/api/admin/feedback/{feedback_id}", response_model=FeedbackOut)
+def api_admin_update_feedback(
+    feedback_id: int,
+    body: FeedbackReviewUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    auth.require_admin(request, db)
+    return admin_service.update_feedback_reviewed(db, feedback_id, body.reviewed)
+
+
+@app.post("/api/feedback", status_code=204)
+def api_submit_feedback(
+    body: FeedbackCreate, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    feedback.submit_feedback(db, user, body)
+    return Response(status_code=204)
 
 
 @app.get("/api/home", response_model=HomeOut)

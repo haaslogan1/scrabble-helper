@@ -40,3 +40,53 @@ def send_verification_email(*, to_email: str, code: str) -> None:
         if settings.smtp_user:
             smtp.login(settings.smtp_user, settings.smtp_password)
         smtp.send_message(message)
+
+
+def send_feedback_email(
+    *,
+    to_email: str,
+    from_user_email: str,
+    from_user_name: str,
+    message: str,
+    category: str | None,
+    page_url: str | None,
+    game_id: int | None,
+) -> None:
+    label = category or "General"
+    subject = f"[Scrabble Helper Feedback] {label} from {from_user_email}"
+    lines = [
+        f"From: {from_user_name} ({from_user_email})",
+        f"Category: {label}",
+    ]
+    if page_url:
+        lines.append(f"Page: {page_url}")
+    if game_id is not None:
+        lines.append(f"Game ID: {game_id}")
+    lines.extend(["", message])
+    body = "\n".join(lines)
+
+    if not smtp_configured():
+        if settings.email_verification_dev_expose_code:
+            logger.info(
+                "SMTP not configured; feedback from %s (%s): %s",
+                from_user_email,
+                label,
+                message[:200],
+            )
+            return
+        raise RuntimeError(
+            "Email sending is not configured. Set SMTP_HOST and SMTP_FROM on the server."
+        )
+
+    email = EmailMessage()
+    email["Subject"] = subject
+    email["From"] = settings.smtp_from
+    email["To"] = to_email
+    email.set_content(body)
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
+        if settings.smtp_use_tls:
+            smtp.starttls()
+        if settings.smtp_user:
+            smtp.login(settings.smtp_user, settings.smtp_password)
+        smtp.send_message(email)

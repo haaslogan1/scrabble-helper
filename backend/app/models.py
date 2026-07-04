@@ -202,6 +202,23 @@ class GamePlayer(Base):
     player: Mapped[Player] = relationship()
 
 
+class FeedbackSubmission(Base):
+    __tablename__ = "feedback_submissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    page_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    game_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reviewed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
 class Round(Base):
     __tablename__ = "rounds"
 

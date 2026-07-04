@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import GuestRoute from "./auth/GuestRoute";
 import SiteHeader from "./components/SiteHeader";
+import FeedbackButton from "./components/FeedbackButton";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -22,6 +23,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <SiteHeader />
       <main className="container app-main">{children}</main>
+      <FeedbackButton />
     </>
   );
 }
