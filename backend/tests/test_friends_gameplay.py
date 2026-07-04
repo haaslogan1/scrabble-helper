@@ -134,9 +134,10 @@ def test_scenario_d_after_mutual_succeeds(monkeypatch):
 
     host_pid = alice.post("/api/players", json={"name": "Alice"}).json()["id"]
     game_id = alice.post("/api/games", json={}).json()["id"]
-    # Without mutual, no linked bob player exists
-    blocked = alice.put(f"/api/games/{game_id}/players", json={"player_ids": [host_pid]})
-    assert blocked.status_code == 400  # need 2 players anyway
+    # Owner is auto-included, so one manual opponent is enough to attach
+    attach = alice.put(f"/api/games/{game_id}/players", json={"player_ids": [host_pid]})
+    assert attach.status_code == 200
+    assert len(attach.json()["standings"]) == 2
 
     incoming = bob.get("/api/friends/requests/incoming").json()
     accept_friend_request(bob, incoming[0]["id"])
@@ -155,13 +156,20 @@ def test_scenario_e_mutual_removed_before_begin(monkeypatch):
     bob_pid = _friend_player_id(alice, bob_user["id"])
     host_pid = alice.post("/api/players", json={"name": "Alice"}).json()["id"]
     game_id = alice.post("/api/games", json={}).json()["id"]
-    alice.put(f"/api/games/{game_id}/players", json={"player_ids": [host_pid, bob_pid]})
+    attach = alice.put(
+        f"/api/games/{game_id}/players", json={"player_ids": [host_pid, bob_pid]}
+    )
+    assert attach.status_code == 200
+    assert len(attach.json()["standings"]) == 3
 
     alice.delete(f"/api/friends/{bob_user['id']}")
+    state = alice.get(f"/api/games/{game_id}/state").json()
+    roster_ids = {s["player_id"] for s in state["standings"]}
+    assert bob_pid not in roster_ids
+
     begin = alice.post(f"/api/games/{game_id}/begin")
-    assert begin.status_code == 400
-    detail = begin.json()["detail"].lower()
-    assert "friend" in detail or "player" in detail or "two players" in detail
+    assert begin.status_code == 200
+    assert len(begin.json()["standings"]) == 2
 
 
 @pytest.mark.integration

@@ -1,5 +1,7 @@
 import pytest
 
+from tests.qa_gameplay import abandon_in_progress_games
+
 
 def _create_players(client):
     ids = []
@@ -11,6 +13,7 @@ def _create_players(client):
 
 @pytest.mark.integration
 def test_game_setup_flow(client):
+    abandon_in_progress_games(client)
     player_ids = _create_players(client)
 
     game = client.post(
@@ -22,13 +25,15 @@ def test_game_setup_flow(client):
 
     attach = client.put(f"/api/games/{game_id}/players", json={"player_ids": player_ids})
     assert attach.status_code == 200
+    roster_ids = [s["player_id"] for s in attach.json()["standings"]]
+    owner_id = next(pid for pid in roster_ids if pid not in player_ids)
 
     random_first = client.post(f"/api/games/{game_id}/random-first")
     assert random_first.status_code == 200
 
     reorder = client.post(
         f"/api/games/{game_id}/turn-order",
-        json={"player_ids": [player_ids[1], player_ids[0], player_ids[2]]},
+        json={"player_ids": [player_ids[1], player_ids[0], player_ids[2], owner_id]},
     )
     assert reorder.status_code == 200
 

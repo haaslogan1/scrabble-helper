@@ -1,6 +1,7 @@
 import pytest
 
 from app.scoring import assign_placements, PlayerScore
+from tests.qa_gameplay import abandon_in_progress_games
 
 
 @pytest.mark.unit
@@ -18,6 +19,7 @@ def test_assign_placements_tie():
 
 @pytest.mark.integration
 def test_leaderboard(client):
+    abandon_in_progress_games(client)
     ids = []
     for name in ("L1", "L2"):
         ids.append(client.post("/api/players", json={"name": name}).json()["id"])
@@ -64,4 +66,5 @@ def test_leaderboard_scope_filters(auth_client):
     manual_names = {r["player"] for r in manual_board["games_played"]}
     assert "ManualA" in all_names
     assert manual_names == {"ManualA", "ManualB"}
-    assert friends_board["games_played"] == []
+    friends_names = {r["player"] for r in friends_board["games_played"]}
+    assert friends_names == {"QA User"}

@@ -6,7 +6,7 @@ from tests.qa_gameplay import finalize_game, play_full_game, setup_and_begin_gam
 @pytest.mark.integration
 def test_manual_only_gameplay_and_leaderboard_scopes(auth_client):
     game_id = setup_and_begin_game(auth_client, ["Manual One", "Manual Two"])
-    play_full_game(auth_client, game_id, player_count=2, rounds=2)
+    play_full_game(auth_client, game_id, rounds=2)
     auth_client.post(f"/api/games/{game_id}/turns", json={"play_type": "challenge"})
     auth_client.post(f"/api/games/{game_id}/turns", json={"play_type": "skip"})
 
@@ -21,7 +21,8 @@ def test_manual_only_gameplay_and_leaderboard_scopes(auth_client):
     manual_names = {r["player"] for r in manual_board["games_played"]}
     assert "Manual One" in all_names and "Manual Two" in all_names
     assert manual_names == {"Manual One", "Manual Two"}
-    assert friends_board["games_played"] == []
+    friends_names = {r["player"] for r in friends_board["games_played"]}
+    assert friends_names == {"QA User"}
 
 
 @pytest.mark.integration

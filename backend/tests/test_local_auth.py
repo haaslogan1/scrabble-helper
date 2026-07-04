@@ -109,9 +109,10 @@ def test_invalid_points_do_not_advance(auth_client):
     bad = play_turn(auth_client, game_id, 0)
     assert bad.status_code == 400
     state = auth_client.get(f"/api/games/{game_id}/state")
-    assert state.json()["current_player"] == "P1"
+    assert state.json()["current_player"] == "QA User"
 
     good = play_turn(auth_client, game_id, 12)
     assert good.status_code == 200
-    assert good.json()["current_player"] == "P2"
-    assert good.json()["standings"][0]["total_score"] == 12
+    assert good.json()["current_player"] == "P1"
+    scores = {s["name"]: s["total_score"] for s in good.json()["standings"]}
+    assert scores["QA User"] == 12
