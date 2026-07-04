@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
-from app import auth, email_verification, feedback, friends, notifications, services, stats
+from app import auth, dictionary, email_verification, feedback, friends, notifications, services, stats
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.email_send import smtp_configured
@@ -26,6 +26,7 @@ from app.schemas import (
     FeedbackCreate,
     FeedbackOut,
     FeedbackReviewUpdate,
+    DictionaryCheckOut,
     FriendAdd,
     FriendOut,
     FriendRequestOut,
@@ -405,6 +406,15 @@ def api_submit_feedback(
 def api_home(request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     return services.home_summary(db, user.id)
+
+
+@app.get("/api/dictionary/check/{word}", response_model=DictionaryCheckOut)
+def api_dictionary_check(word: str, request: Request, db: Session = Depends(get_db)):
+    auth.get_current_user(request, db)
+    normalized = dictionary.normalize_word(word)
+    if normalized is None:
+        return DictionaryCheckOut(word=word.strip().upper() or word.strip(), valid=False)
+    return DictionaryCheckOut(word=normalized, valid=dictionary.is_valid_word(word))
 
 
 @app.get("/api/players", response_model=list[PlayerOut])

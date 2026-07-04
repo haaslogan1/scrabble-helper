@@ -235,6 +235,14 @@ export const listGames = (status?: string) =>
 export const getLeaderboard = (scope: LeaderboardScope = "all") =>
   api<Leaderboard>(`/api/leaderboard?scope=${scope}`);
 
+export type DictionaryCheckResult = {
+  word: string;
+  valid: boolean;
+};
+
+export const checkDictionaryWord = (word: string) =>
+  api<DictionaryCheckResult>(`/api/dictionary/check/${encodeURIComponent(word)}`);
+
 export async function submitFeedback(body: {
   message: string;
   category?: "bug" | "idea" | "other";

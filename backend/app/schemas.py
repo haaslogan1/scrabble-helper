@@ -165,3 +165,8 @@ class FeedbackOut(BaseModel):
     game_id: int | None
     reviewed: bool
     created_at: str
+
+
+class DictionaryCheckOut(BaseModel):
+    word: str
+    valid: bool

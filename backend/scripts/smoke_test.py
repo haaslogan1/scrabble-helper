@@ -37,6 +37,14 @@ def run_checks(client: httpx.Client, *, deep: bool) -> None:
         me.raise_for_status()
         api_home = client.get("/api/home")
         api_home.raise_for_status()
+        quiz = client.get("/api/dictionary/check/QUIZ")
+        quiz.raise_for_status()
+        if not quiz.json().get("valid"):
+            raise RuntimeError(f"Unexpected dictionary check: {quiz.json()}")
+        bad = client.get("/api/dictionary/check/NOTAWORD")
+        bad.raise_for_status()
+        if bad.json().get("valid"):
+            raise RuntimeError(f"Unexpected dictionary check: {bad.json()}")
 
 
 def main() -> int:
