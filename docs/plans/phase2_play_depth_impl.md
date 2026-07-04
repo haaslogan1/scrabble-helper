@@ -8,10 +8,10 @@ estimated_duration: 2-3 weeks
 todos:
   - id: pr1-rules
     content: "PR 1 (phase2/rules-page): Vitest, GameReferenceLayout, rulesContent, RulesPage, /game/rules, play toolbar, frontend tests"
-    status: in_progress
+    status: completed
   - id: pr2-dictionary
     content: "PR 2 (phase2/dictionary): ENABLE + dictionary.py + internal check endpoint + backend tests + DictionaryPage"
-    status: pending
+    status: completed
   - id: pr2-word-tracking
     content: "PR 3 (future): input_mode toggle, word field on turn submit, optional validation"
     status: pending
@@ -55,7 +55,7 @@ isProject: false
 
 ### Frontend tests
 
-- `useGameReturnTo.test.ts` — state, query param, home fallback
+- `useGameReturnTo.test.tsx` — state, query param, home fallback
 - `rulesContent.test.ts` — section ids, dictionary anti-cheating copy, official URL
 - `GameReferenceLayout.test.tsx`, `RulesPage.test.tsx`
 
@@ -86,6 +86,12 @@ No backend changes.
 ### Frontend tests (smoke)
 
 - `DictionaryPage.test.tsx` — callout, empty submit, mocked valid/invalid result
+
+---
+
+## Shipped (PR #6, PR #7)
+
+Rules and dictionary merged to `main` July 2026. Word tracking remains open (PR 3 below).
 
 ---
 
