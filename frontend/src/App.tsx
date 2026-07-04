@@ -12,6 +12,7 @@ import GamePlayersPage from "./pages/GamePlayersPage";
 import GameOrderPage from "./pages/GameOrderPage";
 import GamePlayPage from "./pages/GamePlayPage";
 import GameEndPage from "./pages/GameEndPage";
+import RulesPage from "./pages/RulesPage";
 import GamesListPage from "./pages/GamesListPage";
 import GameDetailPage from "./pages/GameDetailPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
@@ -56,6 +57,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedShell><HomePage /></ProtectedShell>} />
       <Route path="/settings" element={<ProtectedShell><SettingsPage /></ProtectedShell>} />
       <Route path="/game/new" element={<ProtectedShell><GameSettingsPage /></ProtectedShell>} />
+      <Route path="/game/rules" element={<ProtectedShell><RulesPage /></ProtectedShell>} />
       <Route path="/game/:id/players" element={<ProtectedShell><GamePlayersPage /></ProtectedShell>} />
       <Route path="/game/:id/order" element={<ProtectedShell><GameOrderPage /></ProtectedShell>} />
       <Route path="/game/:id/play" element={<ProtectedShell><GamePlayPage /></ProtectedShell>} />
