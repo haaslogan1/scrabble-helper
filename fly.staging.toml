@@ -8,6 +8,7 @@ primary_region = "iad"
   FRONTEND_URL = "https://scrabble-helper-staging.fly.dev"
   COOKIE_SECURE = "true"
   DEV_AUTH_BYPASS = "false"
+  DATABASE_URL = "sqlite:////data/scrabble.db"
 
 [http_service]
   internal_port = 8080
@@ -22,6 +23,10 @@ primary_region = "iad"
     method = "GET"
     path = "/health?db=1"
     timeout = "5s"
+
+[[mounts]]
+  source = "scrabble_helper_staging_data"
+  destination = "/data"
 
 [[vm]]
   memory = "512mb"
