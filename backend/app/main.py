@@ -10,14 +10,14 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
 from app import auth, dictionary, email_verification, feedback, friends, notifications, services, stats
 from app.config import settings
-from app.database import SessionLocal, get_db
+from app.database import Base, SessionLocal, engine, get_db
 from app.email_send import smtp_configured
 from app.models import GameStatus, User
 from app.realtime import game_connections
@@ -88,6 +88,8 @@ def run_migrations() -> None:
     backend_dir = Path(__file__).resolve().parents[1]
     alembic_cfg = Config(str(backend_dir / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    if "users" not in inspect(engine).get_table_names():
+        Base.metadata.create_all(bind=engine)
     command.upgrade(alembic_cfg, "head")
 
 
