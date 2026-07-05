@@ -17,7 +17,7 @@ def run_checks(client: httpx.Client, *, deep: bool) -> None:
     health = client.get("/health")
     health.raise_for_status()
 
-    health_db = client.get("/health", params={"db": True})
+    health_db = client.get("/health", params={"db": 1})
     health_db.raise_for_status()
     body = health_db.json()
     if body.get("db") != "ok":

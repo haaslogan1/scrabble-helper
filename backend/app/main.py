@@ -84,12 +84,32 @@ async def _broadcast_game_state(game_id: int) -> None:
     await game_connections.broadcast(f"game:{game_id}", state)
 
 
+_REVISION_ALIASES = {
+    "004_notifications_friend_requests": "004_notifications",
+}
+
+
+def _repair_revision_stamp() -> None:
+    if "alembic_version" not in inspect(engine).get_table_names():
+        return
+    with engine.begin() as conn:
+        row = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+        if row and row in _REVISION_ALIASES:
+            canonical = _REVISION_ALIASES[row]
+            conn.execute(
+                text("UPDATE alembic_version SET version_num = :canonical"),
+                {"canonical": canonical},
+            )
+            logger.warning("Repaired alembic revision stamp %s -> %s", row, canonical)
+
+
 def run_migrations() -> None:
     backend_dir = Path(__file__).resolve().parents[1]
     alembic_cfg = Config(str(backend_dir / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
     if "users" not in inspect(engine).get_table_names():
         Base.metadata.create_all(bind=engine)
+    _repair_revision_stamp()
     command.upgrade(alembic_cfg, "head")
 
 
