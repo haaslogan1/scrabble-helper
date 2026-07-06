@@ -142,3 +142,4 @@ _Reported by QA agent. Review and assign to dev agent as needed._
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|
 | 2026-07-02 | Dev | Auth | Multiple concurrent sessions per user allowed | Log in as the same user from two devices at once (e.g. phone and laptop). Both sessions stay active. Expected: only one session per user is valid; logging in on a new device should show a warning like "Session exists on [mobile/computer]. That session has been logged off" and invalidate the previous session. |
+| 2026-07-06 | Dev | Gameplay | Invalid rack penalty adjustments allowed at end of game | Finish a game and enter an invalid rack penalty (e.g. `-1000`) in the end-of-game adjustment field. The value is accepted. Expected: rack penalties should be validated (e.g. capped at remaining tiles × tile value, or rejected if out of range). |
