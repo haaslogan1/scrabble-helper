@@ -13,7 +13,7 @@ todos:
     content: "Commit 2: Auth/session fixes for WebView + deep links"
     status: pending
   - id: p4-native
-    content: "Commit 3: Camera plugin for photos + safe-area CSS"
+    content: "Commit 3: Native photo picker (camera + library) + safe-area CSS"
     status: pending
   - id: p4-store
     content: "Commit 4: TestFlight + Play internal testing + store metadata"
@@ -36,6 +36,7 @@ isProject: false
 - [ ] iOS (TestFlight) and Android (internal track) build from same `frontend/` codebase
 - [ ] Login (Google OAuth + email/password) works in app
 - [ ] Full game flow works: create → play → end → detail with photos
+- [ ] On native iOS/Android, owner can upload a photo by taking a new picture **or** selecting one from the device photo library
 - [ ] Deep link `scrabblehelper://game/{id}/play` opens correct screen
 - [ ] No AdMob / ads in this phase
 - [ ] App rejected risks documented (OAuth redirect, privacy URL)
@@ -186,18 +187,65 @@ Only implement if cookie approach fails in TestFlight.
 
 ## Commit 3: Native affordances
 
-### Camera
+### Photo picker (camera + library)
 
-Replace file input on native with `@capacitor/camera`:
+Phase 3 web upload uses a hidden `<input type="file" accept="image/*" capture="environment">`, which on mobile browsers often opens the camera directly and does not reliably expose the photo library. On native iOS/Android, replace the file input with `@capacitor/camera` so owners can **take a new photo or pick an existing one from their library**.
+
+**Install:**
+
+```powershell
+npm install @capacitor/camera
+npx cap sync
+```
 
 **File:** [`PhotoUploadButton.tsx`](../../dev/scrabble-helper/frontend/src/components/PhotoUploadButton.tsx)
 
 ```typescript
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
+
+async function pickPhoto(): Promise<File> {
+  const photo = await Camera.getPhoto({
+    quality: 85,
+    resultType: CameraResultType.Uri, // Uri on native; Blob on web fallback
+    source: CameraSource.Prompt, // action sheet: Take Photo | Photo Library | Cancel
+    correctOrientation: true,
+    width: 2048, // match server photo_max_dimension
+  });
+  const blob = await fetch(photo.webPath!).then((r) => r.blob());
+  return new File([blob], `photo-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+}
+
+// In click handler:
 if (Capacitor.isNativePlatform()) {
-  const photo = await Camera.getPhoto({ quality: 85, resultType: CameraResultType.Blob });
-  ...
+  const file = await pickPhoto();
+  await onUpload(file);
+} else {
+  // existing <input type="file"> path (web)
 }
 ```
+
+**UX:** Use `CameraSource.Prompt` so the OS shows a standard chooser (camera vs library). Do **not** hard-code camera-only on native — library pick is required for this phase.
+
+**Permissions (declare before store submission):**
+
+| Platform | Permission / plist key | When |
+|----------|------------------------|------|
+| iOS | `NSCameraUsageDescription` | Take photo |
+| iOS | `NSPhotoLibraryUsageDescription` | Choose from library (read) |
+| iOS | `NSPhotoLibraryAddUsageDescription` | Only if saving to library later |
+| Android 13+ | `READ_MEDIA_IMAGES` | Library pick |
+| Android ≤12 | `READ_EXTERNAL_STORAGE` | Library pick (maxSdkVersion 32) |
+
+Capacitor adds most keys via plugin config; verify in `Info.plist` / `AndroidManifest.xml` after `cap sync`.
+
+**Reuse Phase 3 API:** Convert the picked image to a `File` and call existing `uploadGamePhoto()` — no backend changes.
+
+**Edge cases:**
+
+- User cancels picker → no error toast; return silently
+- HEIC from iOS library → Capacitor returns JPEG when `resultType: Uri` + fetch, or set `allowEditing: false` and let server Pillow resize (Phase 3)
+- Permission denied → show inline error with link to OS Settings (optional stretch)
 
 ### Safe areas
 
@@ -220,14 +268,14 @@ Verify [`gameWatchUrl`](../../dev/scrabble-helper/frontend/src/api.ts) uses `wss
 
 - Apple Developer account
 - Xcode: signing team, bundle id `com.scrabblehelper.app`
-- Privacy manifest (photos, user content)
+- Privacy manifest (photos, photo library access, user content)
 - TestFlight internal testers
 
 ### Android
 
 - Play Console app
 - AAB upload to internal testing
-- Data safety form: email, photos, game stats
+- Data safety form: email, photos (camera + library), game stats
 
 ### Store metadata (out of repo)
 
@@ -249,7 +297,8 @@ Mobile builds not required in GitHub Actions v1; local Xcode/Android Studio. Opt
 | Google login | | |
 | Start game | | |
 | WebSocket live sync | | |
-| Upload photo | | |
+| Upload photo (camera) | | |
+| Upload photo (library) | | |
 | Dictionary | | |
 | Deep link to game | | |
 

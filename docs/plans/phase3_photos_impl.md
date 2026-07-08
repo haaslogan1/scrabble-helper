@@ -209,7 +209,7 @@ Use `FormData` for upload.
 **File:** [`GameDetailPage.tsx`](../../dev/scrabble-helper/frontend/src/pages/GameDetailPage.tsx):
 - Full gallery at top or bottom
 
-**Mobile:** `capture="environment"` opens rear camera on supported devices; Capacitor camera deferred to Phase 4.
+**Mobile (web):** `capture="environment"` opens rear camera on supported mobile browsers; photo library pick on native apps deferred to Phase 4 (`CameraSource.Prompt`).
 
 ---
 

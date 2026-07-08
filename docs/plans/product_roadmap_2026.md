@@ -27,7 +27,7 @@ todos:
     content: "Phase 3: R2/S3 storage + GamePhoto model + upload/gallery on play and detail pages"
     status: pending
   - id: phase4-mobile
-    content: "Phase 4: Capacitor wrap + store beta releases (AdMob deferred to Phase 6)"
+    content: "Phase 4: Capacitor wrap + native photo picker (camera or library) + store beta releases (AdMob deferred to Phase 6)"
     status: pending
   - id: phase5-research
     content: "Phase 5 (optional): Multi-game research sprint → game_type abstraction spec before coding"
@@ -143,7 +143,7 @@ Each phase has a **low-level implementation plan** (file paths, commits, APIs, a
 | **Outcome** | Capacitor apps on TestFlight + Play internal testing; **no ads** |
 | **Implementation plan** | **[Phase 4 — Mobile Apps (implementation)](phase4_mobile_impl.plan.md)** |
 
-**High-level:** Capacitor wrap, API base URL, OAuth/deep links, native camera, safe-area CSS.
+**High-level:** Capacitor wrap, API base URL, OAuth/deep links, native photo picker (take photo or choose from phone library), safe-area CSS.
 
 **Depends on:** Phase 3.
 
@@ -255,6 +255,7 @@ Your established palette: cream `#f4f1ea`, accent `#0f6b4d`, card tile home, lig
 | Privacy policy | 3 minimal → 6 full public |
 | DB migrations | 1, 3, 5 |
 | Mobile UX (FAB, drawers, safe areas) | 1–4 |
+| Native photo pick (camera + library) | 4 |
 | Ads | 6 only |
 
 ---
