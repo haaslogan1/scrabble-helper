@@ -4,6 +4,9 @@ export type User = {
   name: string;
   username?: string | null;
   is_admin?: boolean;
+  avatar_url?: string | null;
+  has_custom_avatar?: boolean;
+  provider?: string;
 };
 export type Player = {
   id: number;
@@ -18,6 +21,7 @@ export type Friend = {
   username: string | null;
   name: string;
   mutual: boolean;
+  avatar_url?: string | null;
 };
 export type FriendSendResult = {
   id: number;
@@ -50,6 +54,7 @@ export type UserSearchResult = {
   username: string | null;
   name: string;
   reason?: string;
+  avatar_url?: string | null;
 };
 export type GameSettings = {
   minutes_per_turn: number;
@@ -176,6 +181,61 @@ export const login = (email: string, password: string) =>
 export const getMe = () => api<User>("/auth/me");
 export const updateUsername = (username: string) =>
   api<User>("/api/me", { method: "PATCH", body: JSON.stringify({ username }) });
+
+export type GamePhoto = {
+  id: number;
+  url: string;
+  caption?: string | null;
+  context: string;
+  created_at: string;
+  uploaded_by_name: string;
+};
+
+async function uploadMultipart<T>(path: string, file: File, fields?: Record<string, string>): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  if (fields) {
+    for (const [key, value] of Object.entries(fields)) {
+      if (value) form.append(key, value);
+    }
+  }
+  const res = await fetch(path, { method: "POST", credentials: "include", body: form });
+  if (res.status === 401) throw new AuthError();
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(parseApiError(text) || res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
+export const uploadGamePhoto = (
+  gameId: number,
+  file: File,
+  meta?: { caption?: string; context?: string },
+) =>
+  uploadMultipart<GamePhoto>(`/api/games/${gameId}/photos`, file, {
+    caption: meta?.caption ?? "",
+    context: meta?.context ?? "",
+  });
+
+export const listGamePhotos = (gameId: number) => api<GamePhoto[]>(`/api/games/${gameId}/photos`);
+
+export async function deleteGamePhoto(gameId: number, photoId: number): Promise<void> {
+  const res = await fetch(`/api/games/${gameId}/photos/${photoId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (res.status === 401) throw new AuthError();
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(parseApiError(text) || res.statusText);
+  }
+}
+
+export const uploadAvatar = (file: File) => uploadMultipart<User>("/api/me/avatar", file);
+
+export const deleteAvatar = () => api<User>("/api/me/avatar", { method: "DELETE" });
+
 export const logout = () => api<{ status: string }>("/auth/logout", { method: "POST" });
 export const getHome = () =>
   api<{ completed_games: number; in_progress_games: number; saved_players: number }>("/api/home");

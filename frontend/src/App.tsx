@@ -7,6 +7,7 @@ import FeedbackButton from "./components/FeedbackButton";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import GameSettingsPage from "./pages/GameSettingsPage";
 import GamePlayersPage from "./pages/GamePlayersPage";
 import GameOrderPage from "./pages/GameOrderPage";
@@ -57,6 +58,7 @@ function AppRoutes() {
       />
       <Route path="/" element={<ProtectedShell><HomePage /></ProtectedShell>} />
       <Route path="/settings" element={<ProtectedShell><SettingsPage /></ProtectedShell>} />
+      <Route path="/privacy" element={<ProtectedShell><PrivacyPage /></ProtectedShell>} />
       <Route path="/game/new" element={<ProtectedShell><GameSettingsPage /></ProtectedShell>} />
       <Route path="/game/rules" element={<ProtectedShell><RulesPage /></ProtectedShell>} />
       <Route path="/game/dictionary" element={<ProtectedShell><DictionaryPage /></ProtectedShell>} />

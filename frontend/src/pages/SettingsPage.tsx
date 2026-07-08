@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { updateUsername } from "../api";
+import { deleteAvatar, updateUsername, uploadAvatar } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "../components/Avatar";
+import PhotoUploadButton from "../components/PhotoUploadButton";
 import { useTheme, type ThemePreference } from "../theme/ThemeContext";
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; description: string }[] = [
@@ -16,6 +18,8 @@ export default function SettingsPage() {
   const [username, setUsername] = useState(user?.username ?? "");
   const [usernameMsg, setUsernameMsg] = useState("");
   const [usernameErr, setUsernameErr] = useState("");
+  const [avatarErr, setAvatarErr] = useState("");
+  const [avatarMsg, setAvatarMsg] = useState("");
 
   async function saveUsername() {
     setUsernameErr("");
@@ -29,6 +33,28 @@ export default function SettingsPage() {
     }
   }
 
+  async function onAvatarUpload(file: File) {
+    setAvatarErr("");
+    setAvatarMsg("");
+    await uploadAvatar(file);
+    setAvatarMsg("Profile photo updated.");
+    await refresh();
+  }
+
+  async function onRemoveAvatar() {
+    setAvatarErr("");
+    setAvatarMsg("");
+    try {
+      await deleteAvatar();
+      setAvatarMsg(user?.provider === "google" ? "Reverted to Google photo." : "Profile photo removed.");
+      await refresh();
+    } catch (err) {
+      setAvatarErr(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const removeLabel = user?.provider === "google" ? "Use Google photo" : "Remove photo";
+
   return (
     <div>
       <div className="card">
@@ -38,6 +64,24 @@ export default function SettingsPage() {
 
       <div className="card settings-section">
         <h2>Account</h2>
+        <div className="profile-photo-settings">
+          <Avatar
+            name={user?.name ?? ""}
+            email={user?.email}
+            avatarUrl={user?.avatar_url}
+            size="lg"
+          />
+          <div>
+            <PhotoUploadButton label="Upload profile photo" onUpload={onAvatarUpload} />
+            {user?.has_custom_avatar && (
+              <button type="button" className="btn secondary" onClick={onRemoveAvatar}>
+                {removeLabel}
+              </button>
+            )}
+            {avatarMsg && <p className="muted">{avatarMsg}</p>}
+            {avatarErr && <p className="error-text">{avatarErr}</p>}
+          </div>
+        </div>
         <div className="form-field">
           <label>Display name</label>
           <p>{user?.name}</p>
@@ -85,6 +129,12 @@ export default function SettingsPage() {
             </label>
           ))}
         </div>
+      </div>
+
+      <div className="card settings-section">
+        <p>
+          <Link to="/privacy">Privacy policy</Link>
+        </p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "./Avatar";
 
 export default function UserMenu() {
   const { user, logout } = useAuth();
@@ -21,8 +22,6 @@ export default function UserMenu() {
 
   if (!user) return null;
 
-  const initial = (user.name || user.email || "?").charAt(0).toUpperCase();
-
   return (
     <div className="user-menu" ref={menuRef}>
       <button
@@ -32,7 +31,13 @@ export default function UserMenu() {
         aria-expanded={open}
         aria-haspopup="true"
       >
-        <span className="user-menu__avatar" aria-hidden="true">{initial}</span>
+        <Avatar
+          name={user.name}
+          email={user.email}
+          avatarUrl={user.avatar_url}
+          size="sm"
+          className="user-menu__avatar"
+        />
         <span>{user.name}</span>
       </button>
       {open && (

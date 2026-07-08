@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ackInactivity, endGame, gameWatchUrl, getGameState, recordTurn, type GameState } from "../api";
 
+import GamePhotoSection from "../components/GamePhotoSection";
 import { validateTurnPointsInput } from "../turnPoints";
 
 
@@ -445,6 +446,8 @@ export default function GamePlayPage() {
         </div>
 
       )}
+
+      <GamePhotoSection gameId={gameId} isOwner={!isSpectator} compact />
 
     </div>
 

@@ -963,3 +963,124 @@ tbody tr:hover {
 .dictionary-result--invalid {
   color: var(--error, #c00);
 }
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.avatar--sm {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.85rem;
+}
+
+.avatar--md {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1rem;
+}
+
+.avatar--lg {
+  width: 4.5rem;
+  height: 4.5rem;
+  font-size: 1.5rem;
+}
+
+.profile-photo-settings {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-photo-settings .btn {
+  margin-top: 0.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.photo-grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.photo-grid__item {
+  margin: 0;
+}
+
+.photo-grid__thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.photo-grid__thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.photo-grid__delete {
+  margin-top: 0.35rem;
+}
+
+.photo-lightbox {
+  max-width: min(92vw, 720px);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.photo-lightbox img {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.photo-lightbox__meta {
+  margin: 0.75rem 0;
+}
+
+.friend-list__row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.friend-list__row > span:first-of-type {
+  flex: 1;
+}

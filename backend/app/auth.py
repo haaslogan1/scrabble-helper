@@ -27,16 +27,26 @@ oauth.register(
 )
 
 
-def get_or_create_user(db: Session, *, email: str, name: str, provider_sub: str) -> User:
+def get_or_create_user(
+    db: Session, *, email: str, name: str, provider_sub: str, picture: str | None = None
+) -> User:
     user = (
         db.query(User)
         .filter(User.provider == "google", User.provider_sub == provider_sub)
         .one_or_none()
     )
     if user:
-        if user.email != email or user.name != name:
+        changed = False
+        if user.email != email:
             user.email = email
+            changed = True
+        if user.name != name:
             user.name = name
+            changed = True
+        if picture and user.google_avatar_url != picture:
+            user.google_avatar_url = picture
+            changed = True
+        if changed:
             db.commit()
             db.refresh(user)
         if not user.username:
@@ -48,13 +58,21 @@ def get_or_create_user(db: Session, *, email: str, name: str, provider_sub: str)
         existing.provider = "google"
         existing.provider_sub = provider_sub
         existing.name = name
+        if picture:
+            existing.google_avatar_url = picture
         db.commit()
         db.refresh(existing)
         if not existing.username:
             assign_default_username(db, existing)
         return existing
 
-    user = User(email=email, name=name, provider="google", provider_sub=provider_sub)
+    user = User(
+        email=email,
+        name=name,
+        provider="google",
+        provider_sub=provider_sub,
+        google_avatar_url=picture,
+    )
     db.add(user)
     try:
         db.commit()
@@ -220,6 +238,7 @@ async def google_callback(request: Request, db: Session) -> RedirectResponse:
             email=userinfo["email"],
             name=userinfo.get("name", userinfo["email"]),
             provider_sub=userinfo["sub"],
+            picture=userinfo.get("picture"),
         )
         request.session["user_id"] = user.id
         return RedirectResponse(url=settings.frontend_url or "/")

@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
     feedback_to_email: str = ""
     feedback_rate_limit_per_hour: int = 5
+    s3_endpoint: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "auto"
+    photo_max_bytes: int = 5 * 1024 * 1024
+    photo_max_dimension: int = 2048
+    photo_upload_rate_limit_per_game: int = 20
+    avatar_max_bytes: int = 2 * 1024 * 1024
+    avatar_max_dimension: int = 512
+    avatar_upload_rate_limit_per_hour: int = 5
 
 
 settings = Settings()
