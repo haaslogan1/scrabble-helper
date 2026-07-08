@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getGameDetail, type GameState } from "../api";
+import GamePhotoSection from "../components/GamePhotoSection";
 
 export default function GameDetailPage() {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function GameDetailPage() {
           </tbody>
         </table>
       </div>
+      <GamePhotoSection gameId={Number(id)} isOwner={game.role !== "spectator"} />
       <div className="card">
         <h2>Turn log</h2>
         <table>

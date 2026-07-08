@@ -20,6 +20,7 @@ from app.models import (
     User,
 )
 from app import notifications as notification_service
+from app import storage
 
 USERNAME_RE = re.compile(r"^[a-z0-9_]{3,32}$")
 
@@ -158,6 +159,7 @@ def list_friends(db: Session, user_id: int) -> list[dict[str, Any]]:
                 "username": friend.username,
                 "name": friend.name,
                 "mutual": True,
+                "avatar_url": storage.resolve_avatar_url(friend),
             }
         )
     return result
@@ -181,6 +183,7 @@ def list_incoming_requests(db: Session, user_id: int) -> list[dict[str, Any]]:
                 "id": user.id,
                 "username": user.username,
                 "name": user.name,
+                "avatar_url": storage.resolve_avatar_url(user),
             },
             "created_at": req.created_at.isoformat(),
         }
@@ -314,6 +317,7 @@ def accept_friend_request(db: Session, user_id: int, request_id: int) -> dict[st
         "username": friend.username if friend else None,
         "name": friend.name if friend else "",
         "mutual": True,
+        "avatar_url": storage.resolve_avatar_url(friend) if friend else None,
     }
 
 
@@ -463,6 +467,7 @@ def friend_suggestions(db: Session, user_id: int) -> list[dict[str, Any]]:
                 "username": user.username,
                 "name": user.name,
                 "reason": "friend_of_friend",
+                "avatar_url": storage.resolve_avatar_url(user),
             }
         )
     return result
@@ -488,7 +493,7 @@ def search_users(db: Session, user_id: int, query: str) -> list[dict[str, Any]]:
         .limit(25)
         .all()
     )
-    return [{"id": u.id, "username": u.username, "name": u.name} for u in users]
+    return [{"id": u.id, "username": u.username, "name": u.name, "avatar_url": storage.resolve_avatar_url(u)} for u in users]
 
 
 def set_username(db: Session, user: User, username: str) -> User:

@@ -49,6 +49,12 @@ class NotificationType(str, enum.Enum):
     game_completed = "game_completed"
 
 
+class PhotoContext(str, enum.Enum):
+    board = "board"
+    group = "group"
+    other = "other"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -61,6 +67,8 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     totp_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    google_avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    avatar_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -240,3 +248,25 @@ class Round(Base):
     __table_args__ = (
         UniqueConstraint("game_id", "player_id", "round_number"),
     )
+
+
+class GamePhoto(Base):
+    __tablename__ = "game_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False, index=True)
+    uploaded_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    caption: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    context: Mapped[PhotoContext] = mapped_column(
+        Enum(PhotoContext), default=PhotoContext.board, nullable=False
+    )
+    round_id: Mapped[int | None] = mapped_column(ForeignKey("rounds.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    game: Mapped[Game] = relationship()
+    uploaded_by: Mapped[User] = relationship()
+    round: Mapped[Round | None] = relationship()

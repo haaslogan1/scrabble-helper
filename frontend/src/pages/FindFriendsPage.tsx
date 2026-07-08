@@ -12,6 +12,7 @@ import {
   type FriendRequest,
   type UserSearchResult,
 } from "../api";
+import Avatar from "../components/Avatar";
 
 export default function FindFriendsPage() {
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -97,7 +98,12 @@ export default function FindFriendsPage() {
           <h2>Incoming requests</h2>
           <ul className="friend-list">
             {incoming.map((req) => (
-              <li key={req.id}>
+              <li key={req.id} className="friend-list__row">
+                <Avatar
+                  name={req.from_user.name}
+                  avatarUrl={req.from_user.avatar_url}
+                  size="sm"
+                />
                 <span>
                   {userLabel(req.from_user)} — {req.from_user.name}
                 </span>
@@ -124,7 +130,8 @@ export default function FindFriendsPage() {
         {results.length > 0 && (
           <ul className="friend-list">
             {results.map((u) => (
-              <li key={u.id}>
+              <li key={u.id} className="friend-list__row">
+                <Avatar name={u.name} avatarUrl={u.avatar_url} size="sm" />
                 <span>{userLabel(u)} — {u.name}</span>
                 <button type="button" className="btn secondary" onClick={() => onSendRequest(u)}>Send request</button>
               </li>
@@ -138,7 +145,8 @@ export default function FindFriendsPage() {
         {friends.length === 0 && <p className="muted">No friends yet.</p>}
         <ul className="friend-list">
           {friends.map((f) => (
-            <li key={f.id}>
+            <li key={f.id} className="friend-list__row">
+              <Avatar name={f.name} avatarUrl={f.avatar_url} size="sm" />
               <span>
                 {userLabel(f)} — {f.name}
                 <span className="tag tag--ok"> Friend</span>

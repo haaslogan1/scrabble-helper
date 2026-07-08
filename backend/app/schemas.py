@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -25,6 +26,7 @@ class FriendOut(BaseModel):
     username: str | None
     name: str
     mutual: bool
+    avatar_url: str | None = None
 
 
 class FriendSendOut(BaseModel):
@@ -66,6 +68,8 @@ class UserSearchOut(BaseModel):
     id: int
     username: str | None
     name: str
+    reason: str | None = None
+    avatar_url: str | None = None
 
 
 class UsernameUpdate(BaseModel):
@@ -107,8 +111,20 @@ class UserOut(BaseModel):
     name: str
     username: str | None = None
     is_admin: bool = False
+    avatar_url: str | None = None
+    has_custom_avatar: bool = False
+    provider: str = "google"
 
     model_config = {"from_attributes": True}
+
+
+class GamePhotoOut(BaseModel):
+    id: int
+    url: str
+    caption: str | None
+    context: str
+    created_at: datetime
+    uploaded_by_name: str
 
 
 class RegisterRequest(BaseModel):

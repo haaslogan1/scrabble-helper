@@ -6,7 +6,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
-from app import auth, dictionary, email_verification, feedback, friends, notifications, services, stats
+from app import auth, avatars, dictionary, email_verification, feedback, friends, notifications, photos, services, stats
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.email_send import smtp_configured
@@ -32,6 +32,7 @@ from app.schemas import (
     FriendRequestOut,
     FriendSendOut,
     GameCreate,
+    GamePhotoOut,
     GamePlayersUpdate,
     HomeOut,
     LoginRequest,
@@ -184,9 +185,10 @@ def auth_register(body: RegisterRequest, request: Request, db: Session = Depends
             status_code=400,
             detail="Email verification is required. Request a verification code first.",
         )
-    return auth.register_basic_user(
+    user = auth.register_basic_user(
         db, request, email=body.email, password=body.password, name=body.name
     )
+    return avatars.user_out(user)
 
 
 @app.post("/auth/register/send-code", response_model=RegisterSendCodeResponse)
@@ -204,16 +206,18 @@ def auth_register_verify(
 ):
     if not settings.local_auth_enabled or not settings.email_verification_enabled:
         raise HTTPException(status_code=404, detail="Not found")
-    return email_verification.complete_registration(
+    user = email_verification.complete_registration(
         db, request.session, email=body.email, code=body.code
     )
+    return avatars.user_out(user)
 
 
 @app.post("/auth/login", response_model=UserOut)
 def auth_login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if not settings.local_auth_enabled:
         raise HTTPException(status_code=404, detail="Not found")
-    return auth.login_basic_user(db, request, email=body.email, password=body.password)
+    user = auth.login_basic_user(db, request, email=body.email, password=body.password)
+    return avatars.user_out(user)
 
 
 @app.get("/auth/login/google")
@@ -232,16 +236,34 @@ def auth_logout(request: Request):
 
 
 @app.get("/auth/me", response_model=UserOut)
-def auth_me(request: Request, db: Session = Depends(get_db)) -> User:
-    return auth.get_current_user(request, db)
+def auth_me(request: Request, db: Session = Depends(get_db)) -> UserOut:
+    user = auth.get_current_user(request, db)
+    return avatars.user_out(user)
 
 
 @app.patch("/api/me", response_model=UserOut)
 def api_update_me(
     body: UsernameUpdate, request: Request, db: Session = Depends(get_db)
-) -> User:
+) -> UserOut:
     user = auth.get_current_user(request, db)
-    return friends.set_username(db, user, body.username)
+    updated = friends.set_username(db, user, body.username)
+    return avatars.user_out(updated)
+
+
+@app.post("/api/me/avatar", response_model=UserOut)
+async def api_upload_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+):
+    user = auth.get_current_user(request, db)
+    return await avatars.upload_avatar(db, user, file)
+
+
+@app.delete("/api/me/avatar", response_model=UserOut)
+def api_delete_avatar(request: Request, db: Session = Depends(get_db)) -> UserOut:
+    user = auth.get_current_user(request, db)
+    return avatars.delete_avatar(db, user)
 
 
 @app.get("/api/friends", response_model=list[FriendOut])
@@ -569,6 +591,37 @@ async def api_finalize(
 def api_game_state(game_id: int, request: Request, db: Session = Depends(get_db)):
     user = auth.get_current_user(request, db)
     return services.game_state(db, user.id, game_id)
+
+
+@app.get("/api/games/{game_id}/photos", response_model=list[GamePhotoOut])
+def api_list_game_photos(game_id: int, request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    return photos.list_game_photos(db, user.id, game_id)
+
+
+@app.post("/api/games/{game_id}/photos", response_model=GamePhotoOut, status_code=201)
+async def api_upload_game_photo(
+    game_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+    caption: str | None = Form(default=None),
+    context: str | None = Form(default=None),
+    round_id: int | None = Form(default=None),
+):
+    user = auth.get_current_user(request, db)
+    return await photos.upload_game_photo(
+        db, user, game_id, file, caption=caption, context=context, round_id=round_id
+    )
+
+
+@app.delete("/api/games/{game_id}/photos/{photo_id}", status_code=204)
+def api_delete_game_photo(
+    game_id: int, photo_id: int, request: Request, db: Session = Depends(get_db)
+):
+    user = auth.get_current_user(request, db)
+    photos.delete_game_photo(db, user.id, game_id, photo_id)
+    return Response(status_code=204)
 
 
 @app.get("/api/games/{game_id}")
