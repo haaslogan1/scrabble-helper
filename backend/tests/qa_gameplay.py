@@ -10,7 +10,9 @@ DEFAULT_PASSWORD = "QaTestPass1"
 
 
 def _auth_user(data: dict) -> dict:
-    return data["user"]
+    if "user" in data and isinstance(data["user"], dict):
+        return data["user"]
+    return data
 
 
 def register_basic_user(
@@ -90,13 +92,13 @@ def add_friend(client: TestClient, *, user_id: int | None = None, username: str 
         body["username"] = username
     res = client.post("/api/friends", json=body)
     assert res.status_code == 200, res.text
-    return _auth_user(res.json())
+    return res.json()
 
 
 def accept_friend_request(client: TestClient, request_id: int) -> dict:
     res = client.post(f"/api/friends/requests/{request_id}/accept")
     assert res.status_code == 200, res.text
-    return _auth_user(res.json())
+    return res.json()
 
 
 def add_mutual_friends(
