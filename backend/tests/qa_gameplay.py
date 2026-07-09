@@ -9,6 +9,10 @@ from fastapi.testclient import TestClient
 DEFAULT_PASSWORD = "QaTestPass1"
 
 
+def _auth_user(data: dict) -> dict:
+    return data["user"]
+
+
 def register_basic_user(
     client: TestClient,
     *,
@@ -29,7 +33,7 @@ def register_basic_user(
         json={"email": email, "code": code},
     )
     assert res.status_code == 200, res.text
-    return res.json()
+    return _auth_user(res.json())
 
 
 def register_user_with_username(
@@ -53,7 +57,7 @@ def login_basic_user(
 ) -> dict:
     res = client.post("/auth/login", json={"email": email, "password": password})
     assert res.status_code == 200, res.text
-    return res.json()
+    return _auth_user(res.json())
 
 
 def make_basic_client(monkeypatch) -> TestClient:
@@ -86,13 +90,13 @@ def add_friend(client: TestClient, *, user_id: int | None = None, username: str 
         body["username"] = username
     res = client.post("/api/friends", json=body)
     assert res.status_code == 200, res.text
-    return res.json()
+    return _auth_user(res.json())
 
 
 def accept_friend_request(client: TestClient, request_id: int) -> dict:
     res = client.post(f"/api/friends/requests/{request_id}/accept")
     assert res.status_code == 200, res.text
-    return res.json()
+    return _auth_user(res.json())
 
 
 def add_mutual_friends(
@@ -187,7 +191,7 @@ def attach_opponents(client: TestClient, game_id: int, opponent_ids: list[int]) 
     """Attach opponents; the game owner is auto-included by the backend."""
     res = client.put(f"/api/games/{game_id}/players", json={"player_ids": opponent_ids})
     assert res.status_code == 200, res.text
-    return res.json()
+    return _auth_user(res.json())
 
 
 def play_full_game(

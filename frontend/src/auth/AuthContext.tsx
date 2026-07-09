@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { getMe, logout as apiLogout, type User } from "../api";
+import { consumeSessionSuperseded, getMe, logout as apiLogout, type User } from "../api";
+
+export { consumeSessionSuperseded } from "../api";
 
 type AuthContextValue = {
   user: User | null;

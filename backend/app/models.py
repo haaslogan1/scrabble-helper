@@ -69,6 +69,8 @@ class User(Base):
     totp_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     google_avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     avatar_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_session_user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
