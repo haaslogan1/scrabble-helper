@@ -335,7 +335,7 @@ export default function GamePlayPage() {
 
             <h2 id="inactivity-modal-title">Still playing?</h2>
 
-            <p>No turns recorded in 15 minutes. Continue playing or end the game?</p>
+            <p>No turns recorded in about 3 hours. Continue playing or end the game? Live games auto-end after 3 hours of inactivity.</p>
 
             <div className="btn-row">
 

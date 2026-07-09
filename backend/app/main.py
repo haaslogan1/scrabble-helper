@@ -39,6 +39,7 @@ from app.schemas import (
     LoginRequest,
     NotificationListOut,
     NotificationOut,
+    ParticipatingGameOut,
     PlayerCreate,
     PlayerOut,
     RegisterRequest,
@@ -401,15 +402,41 @@ def api_admin_games(
     request: Request,
     db: Session = Depends(get_db),
     owner_email: str | None = Query(default=None),
+    participant_email: str | None = Query(default=None),
+    status: str | None = Query(default=None),
 ):
     auth.require_admin(request, db)
-    return admin_service.list_games(db, owner_email=owner_email)
+    statuses = [GameStatus(s.strip()) for s in status.split(",")] if status else None
+    return admin_service.list_games(
+        db,
+        owner_email=owner_email,
+        participant_email=participant_email,
+        statuses=statuses,
+    )
 
 
 @app.delete("/api/admin/games/{game_id}")
 def api_admin_delete_game(game_id: int, request: Request, db: Session = Depends(get_db)):
     auth.require_admin(request, db)
     return {"deleted": admin_service.delete_game(db, game_id)}
+
+
+@app.post("/api/admin/games/{game_id}/force-complete")
+def api_admin_force_complete_game(
+    game_id: int, request: Request, db: Session = Depends(get_db)
+):
+    auth.require_admin(request, db)
+    return admin_service.force_complete_game(db, game_id)
+
+
+@app.post("/api/admin/games/sweep-stale")
+def api_admin_sweep_stale_games(
+    request: Request,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=500),
+):
+    auth.require_admin(request, db)
+    return admin_service.sweep_stale_games(db, limit=limit)
 
 
 @app.delete("/api/admin/users/{user_id}/games")
@@ -632,6 +659,25 @@ def api_delete_game_photo(
     user = auth.get_current_user(request, db)
     photos.delete_game_photo(db, user.id, game_id, photo_id)
     return Response(status_code=204)
+
+
+@app.get("/api/games/participating", response_model=list[ParticipatingGameOut])
+def api_list_participating_games(
+    request: Request,
+    db: Session = Depends(get_db),
+    status: str | None = Query(default=None),
+):
+    user = auth.get_current_user(request, db)
+    statuses = [GameStatus(s.strip()) for s in status.split(",")] if status else None
+    return services.list_participating_games(db, user.id, statuses=statuses)
+
+
+@app.post("/api/games/{game_id}/abandon")
+async def api_abandon_game(game_id: int, request: Request, db: Session = Depends(get_db)):
+    user = auth.get_current_user(request, db)
+    services.abandon_game(db, user.id, game_id)
+    await _broadcast_game_state(game_id)
+    return services.game_detail(db, user.id, game_id)
 
 
 @app.get("/api/games/{game_id}")

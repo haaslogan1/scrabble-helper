@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     avatar_max_bytes: int = 2 * 1024 * 1024
     avatar_max_dimension: int = 512
     avatar_upload_rate_limit_per_hour: int = 5
+    inactivity_warn_after_sec: int = 10500
+    inactivity_auto_end_after_sec: int = 10800
 
 
 settings = Settings()

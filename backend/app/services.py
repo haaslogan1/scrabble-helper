@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 from app import friends as friends_service
+from app import stale_live_games
+from app.config import settings
 from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round, User
 from app.scoring import (
     PlayerScore,
@@ -22,8 +24,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "show_live_leaderboard": True,
 }
 
-INACTIVITY_WARN_AFTER_SEC = 15 * 60
-INACTIVITY_END_AFTER_SEC = 30 * 60
+INACTIVITY_WARN_AFTER_SEC = settings.inactivity_warn_after_sec
+INACTIVITY_END_AFTER_SEC = settings.inactivity_auto_end_after_sec
 
 
 def list_players(db: Session, user_id: int) -> list[Player]:
@@ -332,6 +334,7 @@ def end_game(db: Session, user_id: int, game_id: int) -> Game:
     if game.status != GameStatus.active:
         raise HTTPException(status_code=400, detail="Game is not active")
     game.status = GameStatus.ending
+    game.ending_at = datetime.utcnow()
     db.commit()
     db.refresh(game)
     return game
@@ -348,9 +351,7 @@ def ack_inactivity(db: Session, user_id: int, game_id: int) -> Game:
 
 
 def _idle_seconds(game: Game) -> float:
-    if not game.last_activity_at:
-        return 0.0
-    return (datetime.utcnow() - game.last_activity_at).total_seconds()
+    return stale_live_games.idle_seconds(game)
 
 
 def _apply_finalize(db: Session, game: Game, rack_adjustments: dict) -> Game:
@@ -391,14 +392,7 @@ def _apply_finalize(db: Session, game: Game, rack_adjustments: dict) -> Game:
 
 
 def auto_finish_inactive_game(db: Session, game: Game) -> bool:
-    if game.status != GameStatus.active or not game.last_activity_at:
-        return False
-    if _idle_seconds(game) < INACTIVITY_END_AFTER_SEC:
-        return False
-    game.status = GameStatus.ending
-    racks = {gp.player_id: 0.0 for gp in game.game_players}
-    _apply_finalize(db, game, racks)
-    return True
+    return stale_live_games.sweep_game_if_stale(db, game)
 
 
 def finalize_game(
@@ -442,7 +436,7 @@ def _build_game_state(game: Game, role: str) -> dict[str, Any]:
     if game.status == GameStatus.active and ordered:
         current_player = ordered[game.current_turn_index].player.name
 
-    idle = _idle_seconds(game)
+    idle = stale_live_games.idle_seconds(game)
     inactivity_warning = (
         game.status == GameStatus.active
         and game.last_activity_at is not None
@@ -529,7 +523,39 @@ def game_detail(db: Session, user_id: int, game_id: int) -> dict[str, Any]:
     }
 
 
+def sweep_games_for_user(db: Session, user_id: int) -> int:
+    return stale_live_games.sweep_games_for_user(db, user_id)
+
+
+def sweep_stale_live_games(db: Session, *, limit: int = 50) -> int:
+    return stale_live_games.sweep_stale_live_games(db, limit=limit)
+
+
+def list_participating_games(
+    db: Session,
+    user_id: int,
+    *,
+    statuses: list[GameStatus] | None = None,
+) -> list[dict[str, Any]]:
+    return stale_live_games.list_participating_games(db, user_id, statuses=statuses)
+
+
+def abandon_game(db: Session, user_id: int, game_id: int) -> Game:
+    return stale_live_games.abandon_game(
+        db,
+        user_id,
+        game_id,
+        get_game_access=get_game_access,
+        load_game=_load_game,
+    )
+
+
+def force_complete_game(db: Session, game_id: int) -> Game:
+    return stale_live_games.force_complete_game(db, game_id, load_game=_load_game)
+
+
 def home_summary(db: Session, user_id: int) -> dict[str, Any]:
+    sweep_games_for_user(db, user_id)
     completed = (
         db.query(Game)
         .filter(Game.owner_user_id == user_id, Game.status == GameStatus.completed)
@@ -544,8 +570,10 @@ def home_summary(db: Session, user_id: int) -> dict[str, Any]:
         .count()
     )
     players = db.query(Player).filter(Player.owner_user_id == user_id).count()
+    participating = len(list_participating_games(db, user_id))
     return {
         "completed_games": completed,
         "in_progress_games": active,
         "saved_players": players,
+        "participating_in_progress_games": participating,
     }

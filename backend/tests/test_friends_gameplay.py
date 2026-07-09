@@ -194,9 +194,46 @@ def test_scenario_f_user_already_in_live_game(monkeypatch):
         f"/api/games/{game2}/players", json={"player_ids": [alice_host, bob_pid_alice]}
     )
     assert blocked.status_code == 400
-    assert "already playing a live game" in blocked.json()["detail"].lower()
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "participant_busy"
+    assert detail["blocking_game_id"] == game1
+    assert "already playing a live game" in detail["detail"].lower()
 
     finalize_game(carol, game1, [carol_host, bob_pid_carol])
 
     begin_game_with_player_ids(alice, game2, [alice_host, bob_pid_alice])
     assert alice.get(f"/api/games/{game2}/state").json()["status"] == "active"
+
+
+@pytest.mark.integration
+def test_scenario_f_finalize_unblocks_both_users(monkeypatch):
+    suffix = uuid.uuid4().hex[:6]
+    carol, carol_user = fresh_basic_client(monkeypatch, username=f"carol7_{suffix}")
+    bob, bob_user = fresh_basic_client(monkeypatch, username=f"bob7_{suffix}")
+    alice, _ = fresh_basic_client(monkeypatch, username=f"alice7_{suffix}")
+
+    add_mutual_friends(carol, bob, to_user_id=bob_user["id"])
+    add_mutual_friends(alice, bob, to_user_id=bob_user["id"])
+
+    bob_pid_carol = _friend_player_id(carol, bob_user["id"])
+    carol_host = carol.post("/api/players", json={"name": "Carol"}).json()["id"]
+    game1 = carol.post("/api/games", json={}).json()["id"]
+    begin_game_with_player_ids(carol, game1, [carol_host, bob_pid_carol])
+
+    bob_pid_alice = _friend_player_id(alice, bob_user["id"])
+    alice_host = alice.post("/api/players", json={"name": "Alice"}).json()["id"]
+    game2 = alice.post("/api/games", json={}).json()["id"]
+    blocked = alice.put(
+        f"/api/games/{game2}/players", json={"player_ids": [alice_host, bob_pid_alice]}
+    )
+    assert blocked.status_code == 400
+
+    finalize_game(carol, game1, [carol_host, bob_pid_carol])
+    begin_game_with_player_ids(alice, game2, [alice_host, bob_pid_alice])
+    finalize_game(alice, game2, [alice_host, bob_pid_alice])
+
+    carol_pid_bob = _friend_player_id(bob, carol_user["id"])
+    bob_host = bob.post("/api/players", json={"name": "Bob"}).json()["id"]
+    game3 = bob.post("/api/games", json={}).json()["id"]
+    begin_game_with_player_ids(bob, game3, [bob_host, carol_pid_bob])
+    assert bob.get(f"/api/games/{game3}/state").json()["status"] == "active"

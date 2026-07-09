@@ -141,4 +141,3 @@ _Reported by QA agent. Review and assign to dev agent as needed._
 
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|
-| 2026-07-08 | @haaslogan1 | Live play | **Critical:** User stuck as "in live game" when not actually playing; blocks new games | @madisonmitchellusa appears to be in an active live game even though she is not. @haaslogan1 cannot start a new game with her despite both being free. Expected: (1) live-game status should reflect reality; (2) live games should auto-end after 3+ hours of inactivity. |
