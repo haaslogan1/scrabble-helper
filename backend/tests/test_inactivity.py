@@ -14,9 +14,9 @@ def _set_last_activity(db, game_id: int, minutes_ago: float) -> None:
 
 
 @pytest.mark.integration
-def test_inactivity_warning_after_15_minutes(client, db):
+def test_inactivity_warning_after_176_minutes(client, db):
     game_id = setup_and_begin_game(client, ["A1", "B1"])
-    _set_last_activity(db, game_id, 16)
+    _set_last_activity(db, game_id, 176)
 
     state = client.get(f"/api/games/{game_id}/state")
     assert state.status_code == 200
@@ -26,9 +26,9 @@ def test_inactivity_warning_after_15_minutes(client, db):
 
 
 @pytest.mark.integration
-def test_no_inactivity_warning_before_15_minutes(client, db):
+def test_no_inactivity_warning_before_120_minutes(client, db):
     game_id = setup_and_begin_game(client, ["A2", "B2"])
-    _set_last_activity(db, game_id, 10)
+    _set_last_activity(db, game_id, 120)
 
     state = client.get(f"/api/games/{game_id}/state")
     assert state.status_code == 200
@@ -38,7 +38,7 @@ def test_no_inactivity_warning_before_15_minutes(client, db):
 @pytest.mark.integration
 def test_ack_inactivity_clears_warning(client, db):
     game_id = setup_and_begin_game(client, ["A3", "B3"])
-    _set_last_activity(db, game_id, 16)
+    _set_last_activity(db, game_id, 176)
 
     ack = client.post(f"/api/games/{game_id}/ack-inactivity")
     assert ack.status_code == 200
@@ -46,9 +46,9 @@ def test_ack_inactivity_clears_warning(client, db):
 
 
 @pytest.mark.integration
-def test_auto_finish_after_30_minutes(client, db):
+def test_auto_finish_after_181_minutes(client, db):
     game_id = setup_and_begin_game(client, ["A4", "B4"])
-    _set_last_activity(db, game_id, 31)
+    _set_last_activity(db, game_id, 181)
 
     state = client.get(f"/api/games/{game_id}/state")
     assert state.status_code == 200

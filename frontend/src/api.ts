@@ -317,7 +317,20 @@ export const deleteAvatar = () => api<User>("/api/me/avatar", { method: "DELETE"
 
 export const logout = () => api<{ status: string }>("/auth/logout", { method: "POST" });
 export const getHome = () =>
-  api<{ completed_games: number; in_progress_games: number; saved_players: number }>("/api/home");
+  api<{
+    completed_games: number;
+    in_progress_games: number;
+    saved_players: number;
+    participating_in_progress_games: number;
+  }>("/api/home");
+
+export const listParticipatingGames = (status?: string) =>
+  api<ParticipatingGame[]>(
+    `/api/games/participating${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+  );
+
+export const abandonGame = (gameId: number) =>
+  api<GameState>(`/api/games/${gameId}/abandon`, { method: "POST" });
 export const listPlayers = () => api<Player[]>("/api/players");
 export const createPlayer = (name: string) =>
   api<Player>("/api/players", { method: "POST", body: JSON.stringify({ name }) });

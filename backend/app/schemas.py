@@ -165,6 +165,18 @@ class HomeOut(BaseModel):
     completed_games: int
     in_progress_games: int
     saved_players: int
+    participating_in_progress_games: int
+
+
+class ParticipatingGameOut(BaseModel):
+    id: int
+    status: str
+    role: str
+    owner_name: str
+    last_activity_at: str | None = None
+    can_finalize: bool = False
+    can_abandon: bool = False
+    resume_url: str
 
 
 class FeedbackCreate(BaseModel):

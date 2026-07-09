@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app import auth
-from app.models import FeedbackSubmission, Game, User
+from app import services
+from app.models import FeedbackSubmission, Game, GamePlayer, GameStatus, Player, User
 
 
 def list_users(db: Session) -> list[dict]:
@@ -25,13 +25,31 @@ def list_users(db: Session) -> list[dict]:
     return result
 
 
-def list_games(db: Session, owner_email: str | None = None) -> list[dict]:
+def list_games(
+    db: Session,
+    owner_email: str | None = None,
+    participant_email: str | None = None,
+    statuses: list[GameStatus] | None = None,
+) -> list[dict]:
     query = db.query(Game)
     if owner_email:
         owner = db.query(User).filter(User.email == owner_email.strip().lower()).one_or_none()
         if owner is None:
             return []
         query = query.filter(Game.owner_user_id == owner.id)
+    if participant_email:
+        participant = (
+            db.query(User).filter(User.email == participant_email.strip().lower()).one_or_none()
+        )
+        if participant is None:
+            return []
+        query = (
+            query.join(GamePlayer, GamePlayer.game_id == Game.id)
+            .join(Player, Player.id == GamePlayer.player_id)
+            .filter(Player.linked_user_id == participant.id)
+        )
+    if statuses:
+        query = query.filter(Game.status.in_(statuses))
     games = query.order_by(Game.id.desc()).all()
     return [
         {
@@ -39,6 +57,7 @@ def list_games(db: Session, owner_email: str | None = None) -> list[dict]:
             "owner_user_id": g.owner_user_id,
             "status": g.status.value,
             "played_date": g.played_date.isoformat() if g.played_date else None,
+            "last_activity_at": g.last_activity_at.isoformat() if g.last_activity_at else None,
         }
         for g in games
     ]
@@ -70,6 +89,16 @@ def delete_all_games_for_email(db: Session, email: str) -> int:
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return delete_all_games_for_user(db, user.id)
+
+
+def force_complete_game(db: Session, game_id: int) -> dict:
+    game = services.force_complete_game(db, game_id)
+    return {"id": game.id, "status": game.status.value}
+
+
+def sweep_stale_games(db: Session, *, limit: int = 50) -> dict:
+    swept = services.sweep_stale_live_games(db, limit=limit)
+    return {"swept": swept}
 
 
 def list_feedback(db: Session, *, reviewed: bool | None = None) -> list[dict]:

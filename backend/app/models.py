@@ -182,6 +182,7 @@ class Game(Base):
     played_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_activity_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ending_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     current_round: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     current_turn_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

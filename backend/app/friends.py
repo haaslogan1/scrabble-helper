@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app import stale_live_games
 from app.models import (
     FriendRequest,
     FriendRequestStatus,
@@ -514,6 +515,7 @@ def set_username(db: Session, user: User, username: str) -> User:
 def user_in_active_live_game(
     db: Session, user_id: int, *, exclude_game_id: int | None = None
 ) -> Game | None:
+    stale_live_games.sweep_games_for_user(db, user_id)
     query = (
         db.query(Game)
         .join(GamePlayer, GamePlayer.game_id == Game.id)
@@ -554,7 +556,11 @@ def validate_linked_players_for_live(
             label = user_display_label(friend)
             raise HTTPException(
                 status_code=400,
-                detail=f"User {label} is already playing a live game.",
+                detail={
+                    "detail": f"User {label} is already playing a live game.",
+                    "code": "participant_busy",
+                    "blocking_game_id": active.id,
+                },
             )
 
 
