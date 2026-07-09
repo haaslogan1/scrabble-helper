@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { finalizeGame, getGameState } from "../api";
+import {
+  MAX_RACK_ADJUSTMENT,
+  MIN_RACK_ADJUSTMENT,
+  validateRackAdjustmentInput,
+} from "../scoring";
 
 export default function GameEndPage() {
   const { id } = useParams();
@@ -19,11 +24,17 @@ export default function GameEndPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    try {
-      const rack: Record<string, number> = {};
-      for (const [pid, val] of Object.entries(adjustments)) {
-        rack[pid] = Number(val) || 0;
+    const rack: Record<string, number> = {};
+    for (const player of players) {
+      const pid = String(player.player_id);
+      const result = validateRackAdjustmentInput(adjustments[pid] ?? "");
+      if (!result.ok) {
+        setError(`${player.name}: ${result.message}`);
+        return;
       }
+      rack[pid] = result.adjustment;
+    }
+    try {
       await finalizeGame(gameId, rack);
       navigate(`/games/${gameId}`);
     } catch (err) {
@@ -34,12 +45,15 @@ export default function GameEndPage() {
   return (
     <form className="card" onSubmit={onSubmit}>
       <h1 className="page-title">End game</h1>
-      <p className="muted">Enter leftover letter penalties (negative numbers) or final adjustments for each player.</p>
+      <p className="muted">Enter leftover tile penalty (0 to -70) for each player.</p>
       {players.map((p) => (
         <div key={p.player_id} className="form-field">
           <label>{p.name}</label>
           <input
             type="number"
+            min={MIN_RACK_ADJUSTMENT}
+            max={MAX_RACK_ADJUSTMENT}
+            step={1}
             placeholder="Rack penalty (e.g. -12)"
             value={adjustments[String(p.player_id)] || ""}
             onChange={(e) => setAdjustments((prev) => ({ ...prev, [String(p.player_id)]: e.target.value }))}
