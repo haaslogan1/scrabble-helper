@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import friends as friends_service
 from app.models import Game, GamePlayer, GameStatus, PlayType, Player, Round, User
-from app.scoring import PlayerScore, assign_placements, validate_turn_points
+from app.scoring import (
+    PlayerScore,
+    assign_placements,
+    validate_rack_adjustment,
+    validate_turn_points,
+)
 
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -350,11 +355,13 @@ def _idle_seconds(game: Game) -> float:
 
 def _apply_finalize(db: Session, game: Game, rack_adjustments: dict) -> Game:
     for gp in game.game_players:
-        adj = rack_adjustments.get(gp.player_id)
-        if adj is None:
-            adj = rack_adjustments.get(str(gp.player_id))
-        if adj is not None:
-            gp.rack_adjustment = float(adj)
+        raw = rack_adjustments.get(gp.player_id)
+        if raw is None:
+            raw = rack_adjustments.get(str(gp.player_id))
+        try:
+            gp.rack_adjustment = float(validate_rack_adjustment(raw if raw is not None else 0))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _recompute_totals(db, game)
 

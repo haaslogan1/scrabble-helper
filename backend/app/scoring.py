@@ -7,6 +7,10 @@ from dataclasses import dataclass, field
 # Highest documented single-turn Scrabble score (OSPD-based theoretical max).
 MAX_TURN_POINTS = 1786
 
+# End-of-game rack penalty bounds (7 tiles × max letter value 10).
+MIN_RACK_ADJUSTMENT = -70
+MAX_RACK_ADJUSTMENT = 0
+
 
 @dataclass
 class PlayerScore:
@@ -54,3 +58,25 @@ def validate_turn_points(value: float | int | None) -> int:
             f"Points cannot exceed {MAX_TURN_POINTS} (theoretical max for one Scrabble turn)."
         )
     return points
+
+
+def validate_rack_adjustment(value: float | int | None) -> int:
+    """Validate end-of-game rack penalty; raises ValueError with a user-facing message."""
+    if value is None:
+        raise ValueError(
+            f"Rack penalty must be between {MIN_RACK_ADJUSTMENT} and {MAX_RACK_ADJUSTMENT}."
+        )
+    if isinstance(value, bool):
+        raise ValueError("Rack penalty must be a whole number.")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("Rack penalty must be a whole number.") from None
+    if not numeric.is_integer():
+        raise ValueError("Rack penalty must be a whole number.")
+    adjustment = int(numeric)
+    if adjustment < MIN_RACK_ADJUSTMENT or adjustment > MAX_RACK_ADJUSTMENT:
+        raise ValueError(
+            f"Rack penalty must be between {MIN_RACK_ADJUSTMENT} and {MAX_RACK_ADJUSTMENT}."
+        )
+    return adjustment
