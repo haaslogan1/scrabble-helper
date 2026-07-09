@@ -35,7 +35,7 @@ isProject: false
 
 - [ ] Owner can upload JPEG/PNG/WebP ≤5 MB during play and on completed game detail
 - [ ] Spectators can view photos, not upload/delete
-- [ ] Images resized server-side, EXIF stripped
+- [ ] Images resized server-side; EXIF orientation applied then stripped on output
 - [ ] Signed URLs expire (1h); no public bucket listing
 - [ ] `/privacy` accessible when logged in; linked from Settings
 - [ ] pytest covers upload auth + owner-only delete
@@ -95,7 +95,7 @@ photo_max_dimension: int = 2048
 
 ```python
 def storage_configured() -> bool: ...
-def process_image(file_bytes: bytes) -> tuple[bytes, str]:  # resize, strip EXIF, return jpeg bytes
+def process_image(file_bytes: bytes) -> tuple[bytes, str]:  # exif_transpose, resize, strip EXIF, return jpeg bytes
 def put_object(key: str, body: bytes, content_type: str) -> None: ...
 def delete_object(key: str) -> None: ...
 def signed_url(key: str, *, expires_sec: int = 3600) -> str: ...
