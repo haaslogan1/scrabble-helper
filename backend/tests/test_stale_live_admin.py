@@ -1,9 +1,15 @@
-﻿from datetime import datetime, timedelta
+﻿import uuid
+from datetime import datetime, timedelta
 
 import pytest
 
 from app.models import Game, GameStatus
-from tests.qa_gameplay import add_mutual_friends, begin_game_with_player_ids, fresh_basic_client
+from tests.qa_gameplay import (
+    add_mutual_friends,
+    begin_game_with_player_ids,
+    fresh_basic_client,
+    register_basic_user,
+)
 
 
 def _friend_player_id(host_client, friend_user_id: int) -> int:
@@ -18,10 +24,11 @@ def _set_last_activity(db, game_id: int, hours_ago: float) -> None:
 
 
 @pytest.mark.integration
-def test_admin_force_complete_stale_game(admin_client, client, db):
+def test_admin_force_complete_stale_game(admin_client, basic_client, db):
     from tests.qa_gameplay import setup_and_begin_game
 
-    game_id = setup_and_begin_game(client, ["adm1", "adm2"])
+    register_basic_user(basic_client, email=f"victim-{uuid.uuid4().hex[:8]}@test.local")
+    game_id = setup_and_begin_game(basic_client, ["adm1", "adm2"])
     _set_last_activity(db, game_id, 1)
 
     res = admin_client.post(f"/api/admin/games/{game_id}/force-complete")
@@ -31,10 +38,11 @@ def test_admin_force_complete_stale_game(admin_client, client, db):
 
 
 @pytest.mark.integration
-def test_admin_sweep_stale_games(admin_client, client, db):
+def test_admin_sweep_stale_games(admin_client, basic_client, db):
     from tests.qa_gameplay import setup_and_begin_game
 
-    game_id = setup_and_begin_game(client, ["sw1", "sw2"])
+    register_basic_user(basic_client, email=f"victim-{uuid.uuid4().hex[:8]}@test.local")
+    game_id = setup_and_begin_game(basic_client, ["sw1", "sw2"])
     _set_last_activity(db, game_id, 4)
 
     res = admin_client.post("/api/admin/games/sweep-stale")
