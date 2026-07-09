@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import settings
 
@@ -55,7 +55,7 @@ def _open_image(file_bytes: bytes) -> Image.Image:
         raise HTTPException(status_code=400, detail="Invalid image file") from exc
     if image.format not in _ALLOWED_FORMATS:
         raise HTTPException(status_code=400, detail="Unsupported image format")
-    return image
+    return ImageOps.exif_transpose(image)
 
 
 def _to_jpeg_bytes(image: Image.Image, *, max_dimension: int) -> bytes:
