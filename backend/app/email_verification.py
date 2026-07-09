@@ -6,9 +6,10 @@ import logging
 import secrets
 from datetime import datetime, timedelta
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.auth import SessionEstablished, establish_session
 from app.config import settings
 from app.email_send import send_verification_email
 from app.email_validation import validate_email
@@ -85,8 +86,8 @@ def request_registration_code(
 
 
 def complete_registration(
-    db: Session, request_session: dict, *, email: str, code: str
-) -> User:
+    db: Session, request: Request, *, email: str, code: str
+) -> SessionEstablished:
     try:
         email = validate_email(email)
     except ValueError as exc:
@@ -160,5 +161,5 @@ def complete_registration(
     db.commit()
     db.refresh(user)
     assign_default_username(db, user)
-    request_session["user_id"] = user.id
-    return user
+    user_agent = request.headers.get("user-agent")
+    return establish_session(db, request, user, user_agent=user_agent)

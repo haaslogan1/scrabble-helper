@@ -22,6 +22,7 @@ from app.email_send import smtp_configured
 from app.models import GameStatus, User
 from app.realtime import game_connections
 from app.schemas import (
+    AuthLoginResponse,
     FinalizeGame,
     FeedbackCreate,
     FeedbackOut,
@@ -55,6 +56,14 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 logger = logging.getLogger(__name__)
 
 
+def _auth_login_response(established: auth.SessionEstablished) -> AuthLoginResponse:
+    return AuthLoginResponse(
+        user=avatars.user_out(established.user),
+        session_replaced=established.session_replaced,
+        session_replaced_device=established.replaced_device_label,
+    )
+
+
 def _ws_current_user(websocket: WebSocket, db: Session) -> User:
     if settings.dev_auth_bypass:
         user = db.query(User).filter(User.email == settings.dev_user_email).one_or_none()
@@ -76,6 +85,7 @@ def _ws_current_user(websocket: WebSocket, db: Session) -> User:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    auth.validate_ws_session_version(session, user)
     return user
 
 
@@ -176,7 +186,7 @@ def auth_dev_login(request: Request, db: Session = Depends(get_db)):
     return auth.dev_login(request, db)
 
 
-@app.post("/auth/register", response_model=UserOut)
+@app.post("/auth/register", response_model=AuthLoginResponse)
 def auth_register(body: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     if not settings.local_auth_enabled:
         raise HTTPException(status_code=404, detail="Not found")
@@ -185,10 +195,10 @@ def auth_register(body: RegisterRequest, request: Request, db: Session = Depends
             status_code=400,
             detail="Email verification is required. Request a verification code first.",
         )
-    user = auth.register_basic_user(
+    established = auth.register_basic_user(
         db, request, email=body.email, password=body.password, name=body.name
     )
-    return avatars.user_out(user)
+    return _auth_login_response(established)
 
 
 @app.post("/auth/register/send-code", response_model=RegisterSendCodeResponse)
@@ -200,24 +210,24 @@ def auth_register_send_code(body: RegisterSendCodeRequest, db: Session = Depends
     )
 
 
-@app.post("/auth/register/verify", response_model=UserOut)
+@app.post("/auth/register/verify", response_model=AuthLoginResponse)
 def auth_register_verify(
     body: RegisterVerifyRequest, request: Request, db: Session = Depends(get_db)
 ):
     if not settings.local_auth_enabled or not settings.email_verification_enabled:
         raise HTTPException(status_code=404, detail="Not found")
-    user = email_verification.complete_registration(
-        db, request.session, email=body.email, code=body.code
+    established = email_verification.complete_registration(
+        db, request, email=body.email, code=body.code
     )
-    return avatars.user_out(user)
+    return _auth_login_response(established)
 
 
-@app.post("/auth/login", response_model=UserOut)
+@app.post("/auth/login", response_model=AuthLoginResponse)
 def auth_login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     if not settings.local_auth_enabled:
         raise HTTPException(status_code=404, detail="Not found")
-    user = auth.login_basic_user(db, request, email=body.email, password=body.password)
-    return avatars.user_out(user)
+    established = auth.login_basic_user(db, request, email=body.email, password=body.password)
+    return _auth_login_response(established)
 
 
 @app.get("/auth/login/google")
@@ -684,7 +694,8 @@ async def ws_game_watch(websocket: WebSocket, game_id: int):
     except WebSocketDisconnect:
         pass
     except HTTPException as exc:
-        await websocket.close(code=4403 if exc.status_code == 403 else 4404)
+        close_code = 4403 if exc.status_code == 403 else 4401 if exc.status_code == 401 else 4404
+        await websocket.close(code=close_code)
     except Exception:
         logger.exception("websocket error for game %s", game_id)
         if connected:

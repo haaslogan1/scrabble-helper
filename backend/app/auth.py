@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import HTTPException, Request
@@ -16,6 +17,8 @@ from app.models import User
 from app.passwords import hash_password, validate_password_policy, verify_password
 
 logger = logging.getLogger(__name__)
+
+DeviceLabel = Literal["mobile", "tablet", "computer"]
 
 oauth = OAuth()
 oauth.register(
@@ -87,6 +90,82 @@ def get_or_create_user(
     return user
 
 
+@dataclass
+class SessionEstablished:
+    user: User
+    session_replaced: bool
+    replaced_device_label: DeviceLabel | None
+
+
+def parse_device_label(user_agent: str | None) -> DeviceLabel | None:
+    if not user_agent:
+        return None
+    ua = user_agent.lower()
+    if "ipad" in ua or "tablet" in ua:
+        return "tablet"
+    if any(token in ua for token in ("iphone", "android", "mobile")):
+        return "mobile"
+    return "computer"
+
+
+def session_superseded_error() -> HTTPException:
+    return HTTPException(
+        status_code=401,
+        detail={
+            "code": "session_superseded",
+            "message": "Your session was ended because you signed in elsewhere.",
+        },
+    )
+
+
+def validate_session_version(request: Request, user: User) -> None:
+    cookie_version = request.session.get("session_version")
+    if cookie_version is None:
+        if user.session_version != 0:
+            raise session_superseded_error()
+        return
+    if cookie_version != user.session_version:
+        raise session_superseded_error()
+
+
+def validate_ws_session_version(session: dict, user: User) -> None:
+    cookie_version = session.get("session_version")
+    if cookie_version is None:
+        if user.session_version != 0:
+            raise session_superseded_error()
+        return
+    if cookie_version != user.session_version:
+        raise session_superseded_error()
+
+
+def establish_session(
+    db: Session,
+    request: Request,
+    user: User,
+    *,
+    user_agent: str | None = None,
+) -> SessionEstablished:
+    session_replaced = user.session_version >= 1
+    replaced_device_label = (
+        parse_device_label(user.last_session_user_agent) if session_replaced else None
+    )
+
+    user.session_version += 1
+    if user_agent:
+        user.last_session_user_agent = user_agent[:512]
+    db.commit()
+    db.refresh(user)
+
+    request.session["user_id"] = user.id
+    request.session["session_version"] = user.session_version
+
+    return SessionEstablished(
+        user=user,
+        session_replaced=session_replaced,
+        replaced_device_label=replaced_device_label,
+    )
+
+
 def get_current_user(request: Request, db: Session) -> User:
     if settings.dev_auth_bypass:
         user = db.query(User).filter(User.email == settings.dev_user_email).one_or_none()
@@ -109,6 +188,7 @@ def get_current_user(request: Request, db: Session) -> User:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    validate_session_version(request, user)
     return user
 
 
@@ -121,7 +201,7 @@ def require_admin(request: Request, db: Session) -> User:
 
 def register_basic_user(
     db: Session, request: Request, *, email: str, password: str, name: str
-) -> User:
+) -> SessionEstablished:
     try:
         email = validate_email(email)
     except ValueError as exc:
@@ -148,11 +228,11 @@ def register_basic_user(
     db.commit()
     db.refresh(user)
     assign_default_username(db, user)
-    request.session["user_id"] = user.id
-    return user
+    user_agent = request.headers.get("user-agent")
+    return establish_session(db, request, user, user_agent=user_agent)
 
 
-def login_basic_user(db: Session, request: Request, *, email: str, password: str) -> User:
+def login_basic_user(db: Session, request: Request, *, email: str, password: str) -> SessionEstablished:
     try:
         email = validate_email(email)
     except ValueError as exc:
@@ -162,8 +242,8 @@ def login_basic_user(db: Session, request: Request, *, email: str, password: str
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    request.session["user_id"] = user.id
-    return user
+    user_agent = request.headers.get("user-agent")
+    return establish_session(db, request, user, user_agent=user_agent)
 
 
 def bootstrap_admin(db: Session) -> None:
@@ -215,6 +295,7 @@ def dev_login(request: Request, db: Session) -> RedirectResponse:
         db.commit()
         db.refresh(user)
     request.session["user_id"] = user.id
+    request.session.pop("session_version", None)
     return RedirectResponse(url=settings.frontend_url or "/")
 
 
@@ -240,8 +321,16 @@ async def google_callback(request: Request, db: Session) -> RedirectResponse:
             provider_sub=userinfo["sub"],
             picture=userinfo.get("picture"),
         )
-        request.session["user_id"] = user.id
-        return RedirectResponse(url=settings.frontend_url or "/")
+        user_agent = request.headers.get("user-agent")
+        established = establish_session(db, request, user, user_agent=user_agent)
+        redirect_url = settings.frontend_url or "/"
+        if established.session_replaced:
+            params = "session_replaced=1"
+            if established.replaced_device_label:
+                params += f"&device={established.replaced_device_label}"
+            separator = "&" if "?" in redirect_url else "?"
+            redirect_url = f"{redirect_url}{separator}{params}"
+        return RedirectResponse(url=redirect_url)
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001

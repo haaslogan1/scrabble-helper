@@ -155,6 +155,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AuthLoginResponse(BaseModel):
+    user: UserOut
+    session_replaced: bool = False
+    session_replaced_device: Literal["mobile", "tablet", "computer"] | None = None
+
+
 class HomeOut(BaseModel):
     completed_games: int
     in_progress_games: int

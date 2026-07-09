@@ -99,6 +99,16 @@ export type GameState = {
 };
 export type LeaderboardScope = "all" | "friends" | "manual";
 export type Leaderboard = Record<string, Array<Record<string, string | number>>>;
+export type ParticipatingGame = {
+  id: number;
+  status: string;
+  role: string;
+  owner_name: string;
+  last_activity_at: string | null;
+  can_finalize: boolean;
+  can_abandon: boolean;
+  resume_url: string;
+};
 
 export class AuthError extends Error {
   constructor(message = "Not authenticated") {
@@ -107,10 +117,54 @@ export class AuthError extends Error {
   }
 }
 
-function parseApiError(text: string): string {
+const SESSION_SUPERSEDED_KEY = "auth:superseded";
+
+export function markSessionSuperseded(): void {
+  sessionStorage.setItem(SESSION_SUPERSEDED_KEY, "1");
+}
+
+export function consumeSessionSuperseded(): boolean {
+  const value = sessionStorage.getItem(SESSION_SUPERSEDED_KEY);
+  if (value) sessionStorage.removeItem(SESSION_SUPERSEDED_KEY);
+  return value === "1";
+}
+
+function isSessionSupersededDetail(detail: unknown): boolean {
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    "code" in detail &&
+    (detail as { code: unknown }).code === "session_superseded"
+  );
+}
+
+function parseAuthError(text: string): string {
   try {
     const parsed = JSON.parse(text) as { detail?: unknown };
     if (typeof parsed.detail === "string") return parsed.detail;
+    if (
+      typeof parsed.detail === "object" &&
+      parsed.detail !== null &&
+      "detail" in parsed.detail &&
+      typeof (parsed.detail as { detail: unknown }).detail === "string"
+    ) {
+      const detail = parsed.detail as {
+        detail: string;
+        blocking_game_id?: unknown;
+      };
+      if (typeof detail.blocking_game_id === "number") {
+        return `${detail.detail} (Game #${detail.blocking_game_id})`;
+      }
+      return detail.detail;
+    }
+    if (
+      typeof parsed.detail === "object" &&
+      parsed.detail !== null &&
+      "message" in parsed.detail &&
+      typeof (parsed.detail as { message: unknown }).message === "string"
+    ) {
+      return (parsed.detail as { message: string }).message;
+    }
     if (Array.isArray(parsed.detail)) {
       const messages = parsed.detail
         .map((item) => {
@@ -129,6 +183,19 @@ function parseApiError(text: string): string {
   return text || "Request failed";
 }
 
+async function handleUnauthorizedResponse(res: Response): Promise<never> {
+  const text = await res.text();
+  try {
+    const parsed = JSON.parse(text) as { detail?: unknown };
+    if (isSessionSupersededDetail(parsed.detail)) {
+      markSessionSuperseded();
+    }
+  } catch {
+    /* ignore parse errors */
+  }
+  throw new AuthError();
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     credentials: "include",
@@ -136,11 +203,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (res.status === 401) {
-    throw new AuthError();
+    await handleUnauthorizedResponse(res);
   }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(parseApiError(text) || res.statusText);
+    throw new Error(parseAuthError(text) || res.statusText);
   }
   return res.json() as Promise<T>;
 }
@@ -150,6 +217,12 @@ export type AuthConfig = {
   dev_login_enabled: boolean;
   local_auth_enabled: boolean;
   email_verification_enabled: boolean;
+};
+
+export type AuthLoginResponse = {
+  user: User;
+  session_replaced: boolean;
+  session_replaced_device?: "mobile" | "tablet" | "computer" | null;
 };
 
 export const getAuthConfig = () => api<AuthConfig>("/auth/config");
@@ -167,16 +240,22 @@ export const sendRegistrationCode = (email: string, password: string, name: stri
   });
 
 export const verifyRegistration = (email: string, code: string) =>
-  api<User>("/auth/register/verify", {
+  api<AuthLoginResponse>("/auth/register/verify", {
     method: "POST",
     body: JSON.stringify({ email, code }),
   });
 
 export const register = (email: string, password: string, name: string) =>
-  api<User>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, name }) });
+  api<AuthLoginResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, name }),
+  });
 
 export const login = (email: string, password: string) =>
-  api<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+  api<AuthLoginResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
 
 export const getMe = () => api<User>("/auth/me");
 export const updateUsername = (username: string) =>
@@ -200,10 +279,10 @@ async function uploadMultipart<T>(path: string, file: File, fields?: Record<stri
     }
   }
   const res = await fetch(path, { method: "POST", credentials: "include", body: form });
-  if (res.status === 401) throw new AuthError();
+  if (res.status === 401) await handleUnauthorizedResponse(res);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(parseApiError(text) || res.statusText);
+    throw new Error(parseAuthError(text) || res.statusText);
   }
   return res.json() as Promise<T>;
 }
@@ -225,10 +304,10 @@ export async function deleteGamePhoto(gameId: number, photoId: number): Promise<
     method: "DELETE",
     credentials: "include",
   });
-  if (res.status === 401) throw new AuthError();
+  if (res.status === 401) await handleUnauthorizedResponse(res);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(parseApiError(text) || res.statusText);
+    throw new Error(parseAuthError(text) || res.statusText);
   }
 }
 
@@ -315,12 +394,10 @@ export async function submitFeedback(body: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (res.status === 401) {
-    throw new AuthError();
-  }
+  if (res.status === 401) await handleUnauthorizedResponse(res);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(parseApiError(text) || res.statusText);
+    throw new Error(parseAuthError(text) || res.statusText);
   }
 }
 

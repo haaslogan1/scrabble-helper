@@ -2,6 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuthConfig, login, sendRegistrationCode, verifyRegistration } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import {
+  sessionReplacedMessageFromDevice,
+  storeSessionReplacedMessage,
+} from "../auth/sessionReplaced";
 import AuthLayout from "../components/AuthLayout";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 import { validateEmailInput } from "../emailValidation";
@@ -80,12 +84,22 @@ export default function LoginPage() {
           setInfo(res.message);
           setRegisterStep("verify");
         } else {
-          await verifyRegistration(normalizedEmail.email, verificationCode.trim());
+          const result = await verifyRegistration(normalizedEmail.email, verificationCode.trim());
+          if (result.session_replaced) {
+            storeSessionReplacedMessage(
+              sessionReplacedMessageFromDevice(result.session_replaced_device),
+            );
+          }
           await refresh();
           navigate("/", { replace: true });
         }
       } else {
-        await login(email, password);
+        const result = await login(email, password);
+        if (result.session_replaced) {
+          storeSessionReplacedMessage(
+            sessionReplacedMessageFromDevice(result.session_replaced_device),
+          );
+        }
         await refresh();
         navigate("/", { replace: true });
       }

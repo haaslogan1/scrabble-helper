@@ -4,6 +4,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import GuestRoute from "./auth/GuestRoute";
 import SiteHeader from "./components/SiteHeader";
 import FeedbackButton from "./components/FeedbackButton";
+import SessionSupersededBanner from "./components/SessionSupersededBanner";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -79,6 +80,7 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
+        <SessionSupersededBanner />
         <AppRoutes />
       </AuthProvider>
     </ThemeProvider>
