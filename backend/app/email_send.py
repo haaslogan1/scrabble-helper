@@ -90,3 +90,32 @@ def send_feedback_email(
         if settings.smtp_user:
             smtp.login(settings.smtp_user, settings.smtp_password)
         smtp.send_message(email)
+
+
+def send_password_reset_email(*, to_email: str, code: str) -> None:
+    subject = "Your Scrabble Helper password reset code"
+    body = (
+        f"Your password reset code is: {code}\n\n"
+        f"This code expires in {settings.email_verification_ttl_minutes} minutes.\n"
+        "If you did not request a password reset, you can ignore this email."
+    )
+    if not smtp_configured():
+        if settings.email_verification_dev_expose_code:
+            logger.info("SMTP not configured; password reset code for %s: %s", to_email, code)
+            return
+        raise RuntimeError(
+            "Email sending is not configured. Set SMTP_HOST and SMTP_FROM on the server."
+        )
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = settings.smtp_from
+    message["To"] = to_email
+    message.set_content(body)
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
+        if settings.smtp_use_tls:
+            smtp.starttls()
+        if settings.smtp_user:
+            smtp.login(settings.smtp_user, settings.smtp_password)
+        smtp.send_message(message)
