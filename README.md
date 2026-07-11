@@ -141,3 +141,4 @@ _Reported by QA agent. Review and assign to dev agent as needed._
 
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|
+| 2026-07-09 | @haaslogan1 | Live play | **Critical:** Orphan live game blocks new games; participant stuck on owner-only End Game flow; owner sees nothing | (1) @haaslogan1 tries to start a live game with @madisonmitchellusa — blocked because she appears to be in a live game. (2) @madisonmitchellusa: open notifications → tap a live-game notification from ~4 days ago → redirected to **End game** → tap **Finalize game** → `Error: only the game owner can do this`. (3) @haaslogan1: home page shows **no** in-progress live game banner or resume link. Expected: stale/orphan games auto-complete after inactivity; participants can abandon (not finalize); both users see accurate live-game status. |

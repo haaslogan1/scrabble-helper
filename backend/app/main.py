@@ -98,6 +98,8 @@ async def _broadcast_game_state(game_id: int) -> None:
 
 _REVISION_ALIASES = {
     "004_notifications_friend_requests": "004_notifications",
+    # PR #21 briefly replaced 009_user_session_version with this id; map back so upgrade can apply 010.
+    "009_game_ending_at": "009_user_session_version",
 }
 
 
