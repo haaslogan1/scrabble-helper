@@ -155,6 +155,22 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class PasswordResetRequestIn(BaseModel):
+    email: str
+
+
+class PasswordResetConfirmIn(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+
+class PasswordResetRequestOut(BaseModel):
+    message: str
+    expires_in_minutes: int
+    dev_code: str | None = None
+
+
 class AuthLoginResponse(BaseModel):
     user: UserOut
     session_replaced: bool = False

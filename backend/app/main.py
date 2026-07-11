@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import admin as admin_service
-from app import auth, avatars, dictionary, email_verification, feedback, friends, notifications, photos, services, stats
+from app import auth, avatars, dictionary, email_verification, feedback, friends, notifications, password_reset, photos, services, stats
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.email_send import smtp_configured
@@ -40,6 +40,9 @@ from app.schemas import (
     NotificationListOut,
     NotificationOut,
     ParticipatingGameOut,
+    PasswordResetConfirmIn,
+    PasswordResetRequestIn,
+    PasswordResetRequestOut,
     PlayerCreate,
     PlayerOut,
     RegisterRequest,
@@ -231,6 +234,23 @@ def auth_login(body: LoginRequest, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Not found")
     established = auth.login_basic_user(db, request, email=body.email, password=body.password)
     return _auth_login_response(established)
+
+
+@app.post("/auth/password-reset/request", response_model=PasswordResetRequestOut)
+def auth_password_reset_request(body: PasswordResetRequestIn, db: Session = Depends(get_db)):
+    if not settings.local_auth_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
+    return password_reset.request_password_reset(db, email=body.email)
+
+
+@app.post("/auth/password-reset/confirm", status_code=204)
+def auth_password_reset_confirm(body: PasswordResetConfirmIn, db: Session = Depends(get_db)):
+    if not settings.local_auth_enabled:
+        raise HTTPException(status_code=404, detail="Not found")
+    password_reset.confirm_password_reset(
+        db, email=body.email, code=body.code, new_password=body.new_password
+    )
+    return Response(status_code=204)
 
 
 @app.get("/auth/login/google")

@@ -2,6 +2,12 @@
 name: Product Roadmap 2026
 overview: A product-first roadmap that perfects the core experience before growth. Each phase links to a low-level implementation plan for the assigned developer.
 todos:
+  - id: immediate-forgot-password
+    content: "Immediate: Forgot password (email code reset) for local accounts — see feat_forgot_password.md"
+    status: pending
+  - id: immediate-stale-live
+    content: "Immediate: Finish stale live-game recovery (PR1 sweep + PR2 UX) — see fix_stale_live_game_recovery.md"
+    status: pending
   - id: phase0-release
     content: "Phase 0: Staging Fly app + GitHub deploy workflow + canary prod rollout + RELEASE.md"
     status: pending
@@ -39,6 +45,25 @@ isProject: false
 ---
 
 # Scrabble Helper — Product Roadmap 2026
+
+## Immediate actions (do next — ahead of phase order)
+
+These are **production blockers / auth ops gaps** that jump the queue. Implement via linked LLDs before resuming normal phase sequencing.
+
+| Priority | Item | Why now | Implementation plan |
+|----------|------|---------|---------------------|
+| **1** | **Forgot password** | Local accounts (e.g. `@smtpsender`, admin bootstrap) cannot recover without Fly secrets / DB; Google OIDC users are fine, but email/password + admin curl need self-serve reset | **[feat_forgot_password.md](feat_forgot_password.md)** |
+| **2** | **Stale live-game recovery (finish)** | PR0 (Alembic) shipped; orphan games (e.g. #309) still block new play until sweep/UX PRs land | **[fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md)** (PR1 → PR2) |
+
+```mermaid
+flowchart LR
+  fp[Forgot password] --> stale[Stale live PR1/PR2]
+  stale --> phases[Resume phase roadmap]
+```
+
+**Handoff:** Say **"build forgot password"** or **"build stale-live PR1"** to execute the linked plan.
+
+---
 
 ## Current state (baseline)
 
@@ -224,6 +249,7 @@ Out of scope: [copy from impl plan]
 
 | Phase | Implementation plan |
 |-------|---------------------|
+| Immediate | [feat_forgot_password.md](feat_forgot_password.md), [fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md) |
 | 0 | [phase0_foundation_impl.plan.md](phase0_foundation_impl.plan.md) |
 | 1 | [phase1_quick_wins_impl.plan.md](phase1_quick_wins_impl.plan.md) |
 | 2 | [phase2_play_depth_impl.plan.md](phase2_play_depth_impl.plan.md) |
@@ -276,10 +302,11 @@ Your established palette: cream `#f4f1ea`, accent `#0f6b4d`, card tile home, lig
 
 Before pressing **Build** on the full roadmap:
 
+- [ ] **Immediate actions** reviewed (forgot password, stale-live finish)
 - [ ] Phase order approved (growth last)
 - [ ] UI direction A, B, or C selected
 - [ ] Phase 5 timing: before or after Phase 6?
 - [ ] Each linked implementation plan reviewed
 - [ ] Multi-game Phase 5: confirm research-first gate acceptable
 
-After review, say **"build Phase 0"** to start, or **"build roadmap"** to execute all phases sequentially with stops for review between phases.
+After review, say **"build forgot password"** or **"build Phase 0"** to start, or **"build roadmap"** to execute all phases sequentially with stops for review between phases.
