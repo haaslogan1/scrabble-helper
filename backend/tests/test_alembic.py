@@ -31,7 +31,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_single_head():
     heads = _script().get_heads()
-    assert heads == ["010_game_ending_at"], f"expected single head 010, got {heads}"
+    assert heads == ["011_password_resets"], f"expected single head 011, got {heads}"
 
 
 def test_alembic_down_revisions_resolve():
@@ -56,12 +56,14 @@ def test_shipped_session_version_revision_still_present():
     script = _script()
     assert script.get_revision("009_user_session_version") is not None
     assert script.get_revision("010_game_ending_at") is not None
+    assert script.get_revision("011_password_resets") is not None
 
 
 def test_upgrade_path_from_session_version_includes_ending_at():
     script = _script()
     ids = [r.revision for r in script.iterate_revisions("head", "009_user_session_version")]
     assert "010_game_ending_at" in ids, f"upgrade path missing 010: {ids}"
+    assert "011_password_resets" in ids, f"upgrade path missing 011: {ids}"
 
 
 def test_upgrade_from_prior_stamp_succeeds(tmp_path, monkeypatch):
@@ -89,7 +91,8 @@ def test_upgrade_from_prior_stamp_succeeds(tmp_path, monkeypatch):
 
     with engine.connect() as conn:
         stamped = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    assert stamped == "010_game_ending_at"
+    assert stamped == "011_password_resets"
     columns = {c["name"] for c in inspect(engine).get_columns("games")}
     assert "ending_at" in columns
+    assert "password_resets" in inspect(engine).get_table_names()
     engine.dispose()
