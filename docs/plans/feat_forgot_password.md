@@ -4,22 +4,22 @@ overview: Self-serve password reset for local (email/password) accounts via 6-di
 todos:
   - id: migration-011
     content: "Migration 011: password_resets table (email, code_hash, expires_at, attempts)"
-    status: pending
+    status: completed
   - id: backend-reset
     content: "password_reset.py + send_password_reset_email + POST request/confirm routes"
-    status: pending
+    status: completed
   - id: backend-tests
     content: "test_password_reset.py — happy path, unknown email, Google-only, expiry, attempts, rate limit"
-    status: pending
+    status: completed
   - id: frontend-ui
     content: "LoginPage forgot-password flow (request → code + new password) + api.ts"
-    status: pending
+    status: completed
   - id: frontend-tests
     content: "Vitest for forgot-password UI states on LoginPage"
-    status: pending
+    status: completed
   - id: readme
     content: "Document forgot-password in README Basic users section"
-    status: pending
+    status: completed
 isProject: false
 ---
 
