@@ -209,6 +209,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text();
     throw new Error(parseAuthError(text) || res.statusText);
   }
+  if (res.status === 204) {
+    return undefined as T;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -255,6 +258,24 @@ export const login = (email: string, password: string) =>
   api<AuthLoginResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
+  });
+
+export type PasswordResetRequestResponse = {
+  message: string;
+  expires_in_minutes: number;
+  dev_code?: string;
+};
+
+export const requestPasswordReset = (email: string) =>
+  api<PasswordResetRequestResponse>("/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const confirmPasswordReset = (email: string, code: string, newPassword: string) =>
+  api<void>("/auth/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify({ email, code, new_password: newPassword }),
   });
 
 export const getMe = () => api<User>("/auth/me");

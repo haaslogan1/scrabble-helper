@@ -630,6 +630,20 @@ label {
   margin-top: 0.5rem;
 }
 
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent, #0f6b4d);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  opacity: 0.85;
+}
+
 /* Tables */
 table {
   width: 100%;
