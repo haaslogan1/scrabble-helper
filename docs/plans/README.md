@@ -12,7 +12,8 @@ Plans live in the repo so you can read and reference them from GitHub mobile, Cu
 | [phase0_foundation_impl.md](phase0_foundation_impl.md) | 0 | Done |
 | [phase1_quick_wins_prs.md](phase1_quick_wins_prs.md) | 1 | Done (PR breakdown) |
 | [phase1_quick_wins_impl.md](phase1_quick_wins_impl.md) | 1 | Superseded by PR plan above |
-| [phase2_play_depth_impl.md](phase2_play_depth_impl.md) | 2 | **Current** — rules, dictionary, word tracking |
+| [fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md) | — | **Current** — orphan live game bug (QA) |
+| [phase2_play_depth_impl.md](phase2_play_depth_impl.md) | 2 | rules, dictionary, word tracking |
 | [phase2_rules_dict_split_prs.md](phase2_rules_dict_split_prs.md) | 2 | Merged into play-depth plan |
 | [phase2_rules_dictionary_pages.md](phase2_rules_dictionary_pages.md) | 2 | Merged into play-depth plan |
 | [phase3_photos_impl.md](phase3_photos_impl.md) | 3 | Planned |
