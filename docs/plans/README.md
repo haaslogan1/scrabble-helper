@@ -9,6 +9,8 @@ Plans live in the repo so you can read and reference them from GitHub mobile, Cu
 | Doc | Phase | Status |
 |-----|-------|--------|
 | [product_roadmap_2026.md](product_roadmap_2026.md) | All | Master roadmap |
+| [feat_forgot_password.md](feat_forgot_password.md) | Immediate | **Next** — local account password reset |
+| [fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md) | — | Current — orphan live game bug (QA) |
 | [phase0_foundation_impl.md](phase0_foundation_impl.md) | 0 | Done |
 | [phase1_quick_wins_prs.md](phase1_quick_wins_prs.md) | 1 | Done (PR breakdown) |
 | [phase1_quick_wins_impl.md](phase1_quick_wins_impl.md) | 1 | Superseded by PR plan above |
