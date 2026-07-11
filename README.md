@@ -91,6 +91,8 @@ The original import-based family site remains in the separate `scrabble2` repo.
 
 Local accounts (`provider=local`) can **register** and **sign in** on the login page alongside Google. Password policy: 10+ characters, at least one letter and one digit.
 
+**Forgot password:** On the sign-in form, use **Forgot password?** to receive a 6-digit email code and set a new password. Only accounts that already have a password (email/password or admin bootstrap) can reset; Google-only accounts should keep using Google sign-in.
+
 **Email verification:** New accounts must verify ownership of the email address. Registration is two steps: enter details → receive a 6-digit code by email → enter the code to finish. Uses standard SMTP (no third-party email vendor).
 
 ### SMTP (Fly secrets)
