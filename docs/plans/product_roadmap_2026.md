@@ -8,12 +8,15 @@ todos:
   - id: immediate-stale-live
     content: "Immediate: Finish stale live-game recovery (PR1 sweep + PR2 UX) — see fix_stale_live_game_recovery.md"
     status: pending
+  - id: immediate-google-avatar
+    content: "Immediate: Fix Google avatar distortion on Find Friends — see fix_google_avatar_distortion.md"
+    status: completed
   - id: phase0-release
     content: "Phase 0: Staging Fly app + GitHub deploy workflow + canary prod rollout + RELEASE.md"
     status: pending
   - id: phase0-ui
     content: "Phase 0: User picks UI direction (A/B/C); then CSS/component overhaul"
-    status: pending
+    status: done
   - id: phase1-feedback
     content: "Phase 1: Feedback FAB + POST /api/feedback + email via existing SMTP"
     status: pending
@@ -54,6 +57,7 @@ These are **production blockers / auth ops gaps** that jump the queue. Implement
 |----------|------|---------|---------------------|
 | **1** | **Forgot password** | Local accounts (e.g. `@smtpsender`, admin bootstrap) cannot recover without Fly secrets / DB; Google OIDC users are fine, but email/password + admin curl need self-serve reset | **[feat_forgot_password.md](feat_forgot_password.md)** |
 | **2** | **Stale live-game recovery (finish)** | PR0 (Alembic) shipped; orphan games (e.g. #309) still block new play until sweep/UX PRs land | **[fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md)** (PR1 → PR2) |
+| **3** | **Google avatar distortion** | Find Friends → Your friends stretches some Google OIDC profile photos; frontend CSS-only fix | **[fix_google_avatar_distortion.md](fix_google_avatar_distortion.md)** (shipped) |
 
 ```mermaid
 flowchart LR
@@ -249,7 +253,7 @@ Out of scope: [copy from impl plan]
 
 | Phase | Implementation plan |
 |-------|---------------------|
-| Immediate | [feat_forgot_password.md](feat_forgot_password.md), [fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md) |
+| Immediate | [feat_forgot_password.md](feat_forgot_password.md), [fix_stale_live_game_recovery.md](fix_stale_live_game_recovery.md), [fix_google_avatar_distortion.md](fix_google_avatar_distortion.md) |
 | 0 | [phase0_foundation_impl.plan.md](phase0_foundation_impl.plan.md) |
 | 1 | [phase1_quick_wins_impl.plan.md](phase1_quick_wins_impl.plan.md) |
 | 2 | [phase2_play_depth_impl.plan.md](phase2_play_depth_impl.plan.md) |
@@ -302,7 +306,7 @@ Your established palette: cream `#f4f1ea`, accent `#0f6b4d`, card tile home, lig
 
 Before pressing **Build** on the full roadmap:
 
-- [ ] **Immediate actions** reviewed (forgot password, stale-live finish)
+- [ ] **Immediate actions** reviewed (forgot password, stale-live finish, Google avatar distortion)
 - [ ] Phase order approved (growth last)
 - [ ] UI direction A, B, or C selected
 - [ ] Phase 5 timing: before or after Phase 6?
