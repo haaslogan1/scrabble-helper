@@ -105,7 +105,8 @@ def test_request_cooldown_skips_second_send(reset_client):
     assert first.status_code == 200
     assert second.status_code == 200
     assert send.call_count == 1
-    assert first.json()["dev_code"] == second.json().get("dev_code") or "dev_code" not in second.json()
+    assert first.json().get("dev_code")
+    assert second.json().get("dev_code") in (None, "")
 
 
 @pytest.mark.integration
@@ -141,13 +142,13 @@ def test_confirm_happy_path_updates_password_and_session_version(reset_client):
 def test_confirm_invalidates_existing_session(reset_client):
     email = "reset-session@test.local"
     register_basic_user(reset_client, email=email)
-    me_before = reset_client.get("/api/me")
+    me_before = reset_client.get("/auth/me")
     assert me_before.status_code == 200
 
     code = _request(reset_client, email).json()["dev_code"]
     assert _confirm(reset_client, email, code, "AnotherPass12").status_code == 204
 
-    me_after = reset_client.get("/api/me")
+    me_after = reset_client.get("/auth/me")
     assert me_after.status_code == 401
 
 
