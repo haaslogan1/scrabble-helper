@@ -49,10 +49,6 @@ Turn on notifications for:
 
 That way you see deploy/smoke failures without polling.
 
-## Push window
-
-Agent pushes to GitHub should happen **6:00 PM–6:00 AM local time** (see delivery-pipeline rule). You can still review plans and merge PRs any time; only **git push** from agents is windowed.
-
 ## Not in the repo (keep on laptop)
 
 - Fly secrets and one-time bootstrap ([RELEASE.md](RELEASE.md))

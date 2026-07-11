@@ -78,7 +78,7 @@ flowchart LR
 
 1. Branch: `phase0/health-check`, `phase1/feedback`, etc.
 2. Commit(s) on branch — one focused commit per task where possible
-3. Push branch (respect 6 PM–6 AM push window)
+3. Push branch
 4. `gh pr create` targeting `main`
 5. Wait for **CI on PR** ([`.github/workflows/ci.yml`](../../dev/scrabble-helper/.github/workflows/ci.yml))
 6. Author **self-approves** (`gh pr review --approve`) and **merges** (`gh pr merge`) when green
