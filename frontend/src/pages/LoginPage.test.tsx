@@ -117,7 +117,8 @@ describe("LoginPage forgot password", () => {
     expect(
       await screen.findByText(/password updated\. sign in with your new password/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
   });
 
   it("rejects mismatched confirm password without calling API", async () => {
