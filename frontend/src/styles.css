@@ -986,8 +986,14 @@ tbody tr:hover {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
-  object-fit: cover;
   flex-shrink: 0;
+}
+
+img.avatar {
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  background: transparent;
 }
 
 .avatar--sm {
@@ -1095,6 +1101,7 @@ tbody tr:hover {
   gap: 0.65rem;
 }
 
-.friend-list__row > span:first-of-type {
+.friend-list__row__label {
   flex: 1;
+  min-width: 0;
 }

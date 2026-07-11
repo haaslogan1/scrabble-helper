@@ -11,7 +11,7 @@ All feature work follows **Phase 0** ([docs/RELEASE.md](../../docs/RELEASE.md)).
 
 1. **Branch** from `main`: `feat/…`, `fix/…`, or `phaseN/…`
 2. **Commit** focused changes on the branch (one task per commit when practical)
-3. **Push** the branch (respect push window: **6:00 PM–6:00 AM local**, unless user explicitly confirms otherwise)
+3. **Push** the branch
 4. **Open PR** targeting `main`: `gh pr create`
 5. **Wait for CI green** on the PR (`.github/workflows/ci.yml` — job `test`)
 6. **Merge** when CI passes: `gh pr merge --merge --delete-branch`  
@@ -31,6 +31,6 @@ Split independent work into **separate PRs** (each with its own branch → push 
 ## Agent checklist before saying "done"
 
 - [ ] Work is on a feature branch (not `main`)
-- [ ] PR opened (or user told exactly how to open it if outside push window)
+- [ ] PR opened
 - [ ] CI status checked on the PR
 - [ ] Merge only after CI green (or user directed otherwise)

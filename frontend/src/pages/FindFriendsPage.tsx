@@ -104,7 +104,7 @@ export default function FindFriendsPage() {
                   avatarUrl={req.from_user.avatar_url}
                   size="sm"
                 />
-                <span>
+                <span className="friend-list__row__label">
                   {userLabel(req.from_user)} — {req.from_user.name}
                 </span>
                 <span>
@@ -132,7 +132,7 @@ export default function FindFriendsPage() {
             {results.map((u) => (
               <li key={u.id} className="friend-list__row">
                 <Avatar name={u.name} avatarUrl={u.avatar_url} size="sm" />
-                <span>{userLabel(u)} — {u.name}</span>
+                <span className="friend-list__row__label">{userLabel(u)} — {u.name}</span>
                 <button type="button" className="btn secondary" onClick={() => onSendRequest(u)}>Send request</button>
               </li>
             ))}
@@ -147,7 +147,7 @@ export default function FindFriendsPage() {
           {friends.map((f) => (
             <li key={f.id} className="friend-list__row">
               <Avatar name={f.name} avatarUrl={f.avatar_url} size="sm" />
-              <span>
+              <span className="friend-list__row__label">
                 {userLabel(f)} — {f.name}
                 <span className="tag tag--ok"> Friend</span>
               </span>

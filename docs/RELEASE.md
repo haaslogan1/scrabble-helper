@@ -4,7 +4,7 @@
 
 1. Create a feature branch: `phaseN/short-task-name`
 2. Commit focused changes (one task per commit where possible)
-3. Push the branch (see push window below)
+3. Push the branch
 4. Open a PR targeting `main`: `gh pr create`
 5. Wait for **CI** (`.github/workflows/ci.yml`) to pass on the PR
 6. Merge when CI is green: `gh pr merge --merge --delete-branch`
@@ -58,10 +58,6 @@ fly deploy --image <previous-image-ref> -a scrabble-helper --strategy immediate
 ## Staging-only redeploy
 
 Use **Actions → deploy → Run workflow** with target `staging` (does not promote to prod).
-
-## Push window
-
-Git **pushes** to remote should happen between **6:00 PM and 6:00 AM** local time. Deploy workflows run on merge at any time.
 
 ## Manual QA checklist (supplement to smoke)
 
