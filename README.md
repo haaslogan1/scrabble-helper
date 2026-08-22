@@ -4,8 +4,7 @@ Live Scrabble scorekeeping and analytics for your games.
 
 ## Live site
 
-- **Fly.io:** https://scrabble-helper.fly.dev/ (after deploy)
-- **Custom domain:** https://scrabblehelper.com/ (configure DNS + `fly certs add`)
+- **Production:** https://scrabble-helper.fly.dev/
 
 ## Stack
 
@@ -13,133 +12,89 @@ Live Scrabble scorekeeping and analytics for your games.
 - **Frontend:** React + TypeScript + Vite
 - **Deploy:** Docker on Fly.io
 
-## Local development
+## Documentation
+
+- **Releases & deploy:** [docs/RELEASE.md](docs/RELEASE.md)
+- **Plans & mobile workflow:** [docs/plans/README.md](docs/plans/README.md) · [docs/MOBILE.md](docs/MOBILE.md)
+
+## REST API
+
+JSON API on the same host as the web app. **Base URL:** `https://scrabble-helper.fly.dev` (or your custom domain).
+
+**Authentication:** Session cookie after login. Send cookies on every request (`curl -b cookies.txt -c cookies.txt`). Google sign-in is browser-only; for scripts and manual calls, use email/password (`POST /auth/login`). Check what is enabled with `GET /auth/config`.
+
+**Errors:** `401` = not signed in; `403` = forbidden; `404` = missing or disabled feature; JSON body includes a `detail` field.
+
+**Full schemas:** Interactive OpenAPI at [/docs](https://scrabble-helper.fly.dev/docs) on a running backend.
+
+### Sign in (email/password)
 
 ```powershell
-# Start Postgres
-docker compose up -d db
+# Save session cookie for later calls
+curl -c cookies.txt -X POST https://scrabble-helper.fly.dev/auth/login `
+  -H "Content-Type: application/json" `
+  -d '{"email":"you@example.com","password":"YourPass123"}'
 
-# Backend
-cd backend
-pip install -r requirements-dev.txt
-$env:DATABASE_URL="postgresql://scrabble:scrabble@localhost:5432/scrabble_helper"
-$env:DEV_AUTH_BYPASS="true"
-uvicorn app.main:app --reload --port 8080
-
-# Frontend (separate terminal)
-cd frontend
-npm install
-npm run dev
+curl -b cookies.txt https://scrabble-helper.fly.dev/auth/me
 ```
 
-Open http://localhost:5173 — API requests proxy to port 8080.
+Registration (when enabled): `POST /auth/register/send-code` → `POST /auth/register/verify` (6-digit email code). Password reset: `POST /auth/password-reset/request` → `POST /auth/password-reset/confirm` (password accounts only; Google-only accounts should use Google sign-in). One account per session; signing in elsewhere may replace your session.
 
-## Tests
+Sign out: `POST /auth/logout` (with cookie).
 
-```powershell
-cd backend
-$env:DATABASE_URL="postgresql://scrabble:scrabble@localhost:5432/scrabble_helper"
-$env:DEV_AUTH_BYPASS="true"
-pytest --cov=app
-```
+### Typical live game flow
 
-## Deploy
+1. **Players** — `GET /api/players`, `POST /api/players` with `{"name":"Alice"}`
+2. **Create game** — `POST /api/games` with optional settings, e.g. `{"settings":{"minutes_per_turn":3,"input_mode":"points","show_live_leaderboard":true}}`
+3. **Roster** — `PUT /api/games/{id}/players` with `{"player_ids":[1,2]}`
+4. **Turn order** — `POST /api/games/{id}/turn-order` with `{"player_ids":[2,1]}` or `POST .../random-first`
+5. **Start** — `POST /api/games/{id}/begin`
+6. **Play** — `POST /api/games/{id}/turns` with `{"points":24,"word":"QUIZ","play_type":"score"}` (`play_type`: `score`, `challenge`, or `skip`); then `POST .../next-player` to advance
+7. **Finish** — `POST /api/games/{id}/end`, then `POST .../finalize` with rack adjustments, e.g. `{"rack_adjustments":{"1":-12,"2":0}}`
+8. **Review** — `GET /api/games/{id}` (full stats) or `GET /api/games/{id}/state` (live board)
 
-Releases use **PRs → merge to `main` → automated staging + production deploy**. See [docs/RELEASE.md](docs/RELEASE.md) for the full workflow, smoke tests, and rollback.
+Poll live state with `GET /api/games/{id}/state`, or connect to WebSocket `GET /api/games/{id}/watch` (cookie auth) for push updates.
 
-**Plans & mobile workflow:** [docs/plans/README.md](docs/plans/README.md) · [docs/MOBILE.md](docs/MOBILE.md)
+### Endpoints by area
 
-**One-time Fly setup:**
+| Area | Method | Path | Purpose |
+|------|--------|------|---------|
+| **Health** | GET | `/health` | Liveness (`?db=1` checks database) |
+| **Auth** | GET | `/auth/config` | Which login methods are enabled |
+| | POST | `/auth/login` | Email/password sign-in |
+| | POST | `/auth/register/send-code`, `/auth/register/verify` | Register with email verification |
+| | POST | `/auth/password-reset/request`, `/auth/password-reset/confirm` | Reset password with email code |
+| | GET | `/auth/me` | Current user |
+| | POST | `/auth/logout` | End session |
+| **Profile** | PATCH | `/api/me` | Set username |
+| | POST/DELETE | `/api/me/avatar` | Upload or remove avatar |
+| **Home** | GET | `/api/home` | Dashboard counts |
+| **Players** | GET/POST | `/api/players` | List or create saved players |
+| **Games** | GET | `/api/games?status=` | Your games (`draft`, `active`, `ending`, `completed`) |
+| | GET | `/api/games/participating?status=` | Games you play in but do not own |
+| | POST | `/api/games` | Create game |
+| | PUT | `/api/games/{id}/players` | Set roster |
+| | POST | `/api/games/{id}/turn-order`, `/random-first`, `/begin` | Setup |
+| | POST | `/api/games/{id}/turns`, `/next-player` | Record play and advance |
+| | POST | `/api/games/{id}/end`, `/finalize`, `/ack-inactivity`, `/abandon` | End or leave |
+| | GET | `/api/games/{id}`, `/api/games/{id}/state` | Detail or live state |
+| | GET/POST/DELETE | `/api/games/{id}/photos` | Game photos |
+| **Stats** | GET | `/api/leaderboard?scope=` | Leaderboards (`all`, `friends`, `manual`) |
+| **Dictionary** | GET | `/api/dictionary/check/{word}` | Check word against ENABLE |
+| **Friends** | GET/POST/DELETE | `/api/friends`, `/api/friends/{user_id}` | List, request, remove |
+| | GET | `/api/friends/requests/incoming` | Pending requests |
+| | POST | `/api/friends/requests/{id}/accept`, `/deny` | Respond to request |
+| | GET | `/api/users/search?q=` | Find users by username |
+| **Notifications** | GET | `/api/notifications`, `/api/notifications/unread-count` | Inbox and badge |
+| | POST | `/api/notifications/{id}/read`, `/dismiss`, `/accept`, `/deny` | Mark or act |
+| | POST | `/api/notifications/read-all` | Mark all read |
+| **Feedback** | POST | `/api/feedback` | Send bug/idea (`{"message":"...","category":"bug"}`) |
 
-```powershell
-# Production secrets (Neon/Supabase Postgres recommended):
-fly secrets set DATABASE_URL="postgresql://..." SESSION_SECRET="..." GOOGLE_CLIENT_ID="..." GOOGLE_CLIENT_SECRET="..." --app scrabble-helper
-fly secrets unset DEV_AUTH_BYPASS --app scrabble-helper
-
-# Staging app (separate DB):
-fly apps create scrabble-helper-staging
-fly secrets set DATABASE_URL="..." SESSION_SECRET="..." ... --app scrabble-helper-staging
-```
-
-**GitHub:** set repo secret `FLY_API_TOKEN` for automated deploys.
-
-Manual emergency deploy: `fly deploy` (prefer the merge pipeline in normal use).
-
-Until `DATABASE_URL` is set, `/health` and the SPA shell load; API routes need a live database.
-
-## Google OAuth setup
-
-1. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/)
-2. **Authorized redirect URI:** `https://scrabble-helper.fly.dev/auth/callback/google`
-3. Store credentials as **Fly secrets** (never commit to git):
-
-```powershell
-fly secrets set GOOGLE_CLIENT_ID="..." GOOGLE_CLIENT_SECRET="..." -a scrabble-helper
-```
-
-Secrets live only on Fly (`fly secrets list` shows names, not values). `.env` is gitignored for local dev.
-
-**Security:** Do not put client IDs/secrets in `fly.toml`, source code, or GitHub. Use `fly secrets set` for production.
-
-After Google redirects back, the app still needs `DATABASE_URL` set as a Fly secret to save user accounts (Neon/Supabase free tier). Until then, sign-in may fail at the callback step.
-
-## Legacy family dashboard
-
-The original import-based family site remains in the separate `scrabble2` repo.
-
-## Basic users (email/password)
-
-Local accounts (`provider=local`) can **register** and **sign in** on the login page alongside Google. Password policy: 10+ characters, at least one letter and one digit.
-
-**Forgot password:** On the sign-in form, use **Forgot password?** to receive a 6-digit email code and set a new password. Only accounts that already have a password (email/password or admin bootstrap) can reset; Google-only accounts should keep using Google sign-in.
-
-**Email verification:** New accounts must verify ownership of the email address. Registration is two steps: enter details → receive a 6-digit code by email → enter the code to finish. Uses standard SMTP (no third-party email vendor).
-
-### SMTP (Fly secrets)
-
-```powershell
-fly secrets set `
-  SMTP_HOST="smtp.gmail.com" `
-  SMTP_PORT="587" `
-  SMTP_USER="you@gmail.com" `
-  SMTP_PASSWORD="your-app-password" `
-  SMTP_FROM="you@gmail.com" `
-  -a scrabble-helper
-```
-
-Gmail: use an [App Password](https://support.google.com/accounts/answer/185833) with 2FA enabled. Any SMTP server works (Outlook, self-hosted Postfix, etc.).
-
-### Admin API
-
-Bootstrap admin via Fly secrets (never commit):
-
-```powershell
-fly secrets set ADMIN_EMAIL="you@example.com" ADMIN_PASSWORD="YourStrongPass1" -a scrabble-helper
-```
-
-Admin endpoints (session cookie after `POST /auth/login`):
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/admin/users` | List users |
-| GET | `/api/admin/games?owner_email=` | List games |
-| DELETE | `/api/admin/games/{id}` | Delete one game |
-| DELETE | `/api/admin/users/by-email/{email}/games` | Bulk-delete all games for a user |
-
-Example cleanup:
-
-```powershell
-# Login as admin, then (with session cookie):
-curl -X DELETE https://scrabble-helper.fly.dev/api/admin/users/by-email/haaslogan1@gmail.com/games -b cookies.txt
-```
-
-### QA agent
-
-Say **run QA agent on scrabble-helper** or use the project skill at `.cursor/skills/scrabble-qa/SKILL.md`. The agent registers basic users, plays games via API/browser, and logs issues below. It loops until you stop it.
+**Admin** (requires admin account): `GET /api/admin/users`, `GET /api/admin/games`, `DELETE /api/admin/games/{id}`, bulk game cleanup under `/api/admin/users/...`, feedback review under `/api/admin/feedback`. Same session cookie after admin login.
 
 ## Known Issues
 
-_Reported by QA agent. Review and assign to dev agent as needed._
+_Reported by QA. Review and assign as needed._
 
 | Date | Reporter | Area | Summary | Steps to reproduce |
 |------|----------|------|---------|-------------------|

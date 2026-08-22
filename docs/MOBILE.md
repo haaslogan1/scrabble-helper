@@ -52,7 +52,7 @@ That way you see deploy/smoke failures without polling.
 ## Not in the repo (keep on laptop)
 
 - Fly secrets and one-time bootstrap ([RELEASE.md](RELEASE.md))
-- Local Postgres / `docker compose` dev stack ([README.md](../README.md))
+- Local Postgres / `docker compose up -d db` at repo root (see `docker-compose.yml`)
 - `.env` files and API tokens
 
 If you need remote dev with a full shell, add **GitHub Codespaces** later (not configured today); Cursor cloud agents cover most “implement this plan” work.
