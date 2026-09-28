@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app import friends as friends_service
@@ -412,7 +413,17 @@ def finalize_game(
 def list_games(
     db: Session, user_id: int, status: GameStatus | None = None
 ) -> list[Game]:
-    query = db.query(Game).filter(Game.owner_user_id == user_id)
+    if status == GameStatus.completed:
+        participant_game_ids = (
+            db.query(GamePlayer.game_id)
+            .join(Player, Player.id == GamePlayer.player_id)
+            .filter(Player.linked_user_id == user_id)
+        )
+        query = db.query(Game).filter(
+            or_(Game.owner_user_id == user_id, Game.id.in_(participant_game_ids))
+        )
+    else:
+        query = db.query(Game).filter(Game.owner_user_id == user_id)
     if status:
         query = query.filter(Game.status == status)
     return query.order_by(Game.completed_at.desc().nullslast(), Game.id.desc()).all()
