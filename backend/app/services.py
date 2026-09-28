@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 
 from fastapi import HTTPException
-from sqlalchemy import or_
+from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app import friends as friends_service
@@ -410,18 +410,24 @@ def finalize_game(
     return get_owned_game(db, user_id, game.id)
 
 
+def visible_completed_game_ids(user_id: int) -> Select:
+    """Completed games the user owns or played in as a linked player."""
+    participant_game_ids = (
+        select(GamePlayer.game_id)
+        .join(Player, Player.id == GamePlayer.player_id)
+        .where(Player.linked_user_id == user_id)
+    )
+    return select(Game.id).where(
+        Game.status == GameStatus.completed,
+        or_(Game.owner_user_id == user_id, Game.id.in_(participant_game_ids)),
+    )
+
+
 def list_games(
     db: Session, user_id: int, status: GameStatus | None = None
 ) -> list[Game]:
     if status == GameStatus.completed:
-        participant_game_ids = (
-            db.query(GamePlayer.game_id)
-            .join(Player, Player.id == GamePlayer.player_id)
-            .filter(Player.linked_user_id == user_id)
-        )
-        query = db.query(Game).filter(
-            or_(Game.owner_user_id == user_id, Game.id.in_(participant_game_ids))
-        )
+        query = db.query(Game).filter(Game.id.in_(visible_completed_game_ids(user_id)))
     else:
         query = db.query(Game).filter(Game.owner_user_id == user_id)
     if status:
@@ -568,9 +574,7 @@ def force_complete_game(db: Session, game_id: int) -> Game:
 def home_summary(db: Session, user_id: int) -> dict[str, Any]:
     sweep_games_for_user(db, user_id)
     completed = (
-        db.query(Game)
-        .filter(Game.owner_user_id == user_id, Game.status == GameStatus.completed)
-        .count()
+        db.query(Game).filter(Game.id.in_(visible_completed_game_ids(user_id))).count()
     )
     active = (
         db.query(Game)
