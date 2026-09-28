@@ -61,6 +61,12 @@ def test_scenario_a_mutual_live_spectate(monkeypatch):
     assert any(g["id"] == game_id for g in bob_past)
     assert bob.get("/api/home").json()["completed_games"] == len(bob_past)
 
+    bob_board = bob.get("/api/leaderboard").json()
+    bob_rows = {r["player"]: r["games_played"] for r in bob_board["games_played"]}
+    assert bob_rows == {"Manual Host": 1, "Bob Friend": 1}
+    bob_friends = bob.get("/api/leaderboard", params={"scope": "friends"}).json()
+    assert {r["player"] for r in bob_friends["games_played"]} == {"Bob Friend"}
+
     friends_board = alice.get("/api/leaderboard", params={"scope": "friends"}).json()
     friend_names = {r["player"] for r in friends_board["games_played"]}
     assert "Bob Friend" in friend_names
